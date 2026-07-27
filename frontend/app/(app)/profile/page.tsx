@@ -5,13 +5,13 @@ import Link from "next/link"
 import { MapPin, Trophy, Pencil, Zap, Clock, DollarSign, Calendar, Star, Users, ChevronRight, Edit3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { getUserProfile, getMisPartidos, getMisCanchas, getMisTorneos, API_URL, type UserProfile, type PartidoData, type TorneoData } from "@/hooks/use-api"
+import { getUserProfile, getMisPartidos, getMisCanchas, getMisTorneos, API_URL, type UserProfile, type PartidoData, type TorneoData, type MisPartidosData, type CanchaData } from "@/hooks/use-api"
 
 export default function ProfilePage() {
   const { userId, role } = useAuthContext()
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [canchas, setCanchas] = useState<any[]>([])
-  const [misPartidos, setMisPartidos] = useState<{ organizados: PartidoData[], inscritos: PartidoData[] } | null>(null)
+  const [canchas, setCanchas] = useState<CanchaData[]>([])
+  const [misPartidos, setMisPartidos] = useState<MisPartidosData | null>(null)
   const [misTorneos, setMisTorneos] = useState<TorneoData[]>([])
   const [isLoading, setIsLoading] = useState(true)
 

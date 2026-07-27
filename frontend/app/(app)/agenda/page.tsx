@@ -18,28 +18,17 @@ import {
   cancelarReservaDueno,
   type AgendaData,
   type AgendaSlot,
+  type CanchaData,
 } from "@/hooks/use-api"
 import { ManualReservationDialog } from "@/components/manual-reservation-dialog"
 import { RescheduleReservationDialog } from "@/components/reschedule-reservation-dialog"
 import Swal from "sweetalert2"
 
-interface Cancha {
-  id: number
-  nombre: string
-  tipo_superficie: string
-  tamano: number
-  zona: string
-  direccion: string
-  hora_apertura: string
-  hora_cierre: string
-  precio_por_turno: number
-}
-
 export default function AgendaPage() {
   const { role } = useAuthContext()
   const router = useRouter()
 
-  const [canchas, setCanchas] = useState<Cancha[]>([])
+  const [canchas, setCanchas] = useState<CanchaData[]>([])
   const [canchaSeleccionada, setCanchaSeleccionada] = useState<number | "">("")
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0])
   const [agenda, setAgenda] = useState<AgendaData | null>(null)

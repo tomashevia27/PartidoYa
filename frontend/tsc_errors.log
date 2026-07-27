@@ -1,0 +1,47 @@
+app/(app)/agenda/page.tsx(67,20): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<Cancha[]>'.
+app/(app)/agenda/page.tsx(68,13): error TS18046: 'data' is of type 'unknown'.
+app/(app)/agenda/page.tsx(69,33): error TS18046: 'data' is of type 'unknown'.
+app/(app)/canchas/page.tsx(55,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<Cancha[]>'.
+app/(app)/estadisticas/page.tsx(58,28): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<{ nombre: string; id?: number | undefined; zona?: string | undefined; tipo_superficie?: string | undefined; tamano?: number | undefined; iluminacion?: boolean | undefined; direccion?: string | undefined; ... 5 more ...; fotos?: string | undefined; }[]>'.
+app/(app)/home/page.tsx(235,22): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<Cancha[]>'.
+app/(app)/home/page.tsx(588,116): error TS18048: 'torneo.lugar' is possibly 'undefined'.
+app/(app)/home/page.tsx(652,116): error TS18048: 'torneo.lugar' is possibly 'undefined'.
+app/(app)/home/page.tsx(836,114): error TS18048: 'torneo.lugar' is possibly 'undefined'.
+app/(app)/partidos/[id]/editar/page.tsx(39,17): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
+app/(app)/partidos/[id]/page.tsx(93,26): error TS18048: 'partido.cantidad_jugadores' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(93,55): error TS18048: 'partido.cupos_disponibles' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(99,127): error TS18048: 'spotsLeft' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(426,59): error TS18048: 'partido.cantidad_jugadores' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(505,45): error TS18048: 'partido.cantidad_jugadores' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(505,74): error TS18048: 'partido.cupos_disponibles' is possibly 'undefined'.
+app/(app)/partidos/[id]/page.tsx(523,55): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(iterable: Iterable<unknown> | ArrayLike<unknown>): unknown[]', gave the following error.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+  Overload 2 of 4, '(arrayLike: ArrayLike<unknown>): unknown[]', gave the following error.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+app/(app)/partidos/disponibles/page.tsx(431,42): error TS18048: 'totalPlayers' is possibly 'undefined'.
+app/(app)/partidos/disponibles/page.tsx(431,57): error TS18048: 'spotsLeft' is possibly 'undefined'.
+app/(app)/partidos/disponibles/page.tsx(432,39): error TS18048: 'spotsLeft' is possibly 'undefined'.
+app/(app)/partidos/disponibles/page.tsx(506,67): error TS18048: 'totalPlayers' is possibly 'undefined'.
+app/(app)/profile/page.tsx(28,22): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<any[]>'.
+app/(app)/profile/page.tsx(31,26): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<{ organizados: { id: number; cancha_id: number; fecha: string; horario: string; estado: string; jugadores?: { id: number; nombre: string; apellido: string; edad: number; genero: string; zona: string; rol: string; email?: string | undefined; password?: string | undefined; foto_perfil?: string | undefin...'.
+app/(app)/torneos/[id]/editar/page.tsx(71,37): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+app/(app)/torneos/[id]/editar/page.tsx(73,44): error TS18048: 'data.franja_horaria' is possibly 'undefined'.
+app/(app)/torneos/[id]/editar/page.tsx(87,21): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/(app)/torneos/[id]/editar/page.tsx(88,21): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+app/(app)/torneos/[id]/editar/page.tsx(94,21): error TS2322: Type 'number | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+app/(app)/torneos/[id]/editar/page.tsx(95,21): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.
+app/(app)/torneos/[id]/inscribirse/page.tsx(180,36): error TS2532: Object is possibly 'undefined'.

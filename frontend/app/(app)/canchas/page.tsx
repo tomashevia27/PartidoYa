@@ -7,23 +7,7 @@ import { useRouter } from "next/navigation"
 import { MapPin, Clock, Zap, DollarSign, Search, Filter, Trophy, Users, Star, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { getMisCanchas, API_URL } from "@/hooks/use-api"
-
-interface Cancha {
-    id: number
-    nombre: string
-    tipo_superficie: string
-    tamano: number
-    iluminacion: boolean
-    zona: string
-    direccion: string
-    precio_por_turno: number
-    dias_operativos_texto: string
-    hora_apertura: string
-    hora_cierre: string
-    fotos: string | null
-    activa: boolean
-}
+import { getMisCanchas, API_URL, type CanchaData } from "@/hooks/use-api"
 
 // Football SVG Component
 function FootballIcon({ className }: { className?: string }) {
@@ -37,7 +21,7 @@ function FootballIcon({ className }: { className?: string }) {
 }
 
 export default function CanchasPage() {
-    const [canchas, setCanchas] = useState<Cancha[]>([])
+    const [canchas, setCanchas] = useState<CanchaData[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [showFilters, setShowFilters] = useState(false)

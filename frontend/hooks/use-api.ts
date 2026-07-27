@@ -1,6 +1,13 @@
-import { fetchApi, API_URL, getAccessToken } from "@/lib/api-client";
-
 "use client"
+
+import { fetchApi, API_URL, getAccessToken } from "@/lib/api-client";
+import { CanchaArraySchema, PartidoArraySchema, TorneoArraySchema, TorneoSchema, CanchaSchema, PartidoSchema, MisPartidosSchema } from "@/lib/schemas";
+import { z } from "zod";
+export { API_URL, getAccessToken }
+export type CanchaData = z.infer<typeof CanchaSchema>;
+export type PartidoData = z.infer<typeof PartidoSchema>;
+export type TorneoData = z.infer<typeof TorneoSchema>;
+export type { MisPartidosData } from "@/lib/schemas";
 const CLOUD_NAME = "dzsrgcgq6"
 const UPLOAD_PRESET = "PartidoYa_preset"
 
@@ -130,23 +137,9 @@ export async function updateUserProfile(
       }
 }
 
-export interface CanchaData {
-  id?: number
-  nombre: string
-  tipo_superficie: string
-  tamano: number
-  iluminacion: boolean
-  zona: string
-  direccion: string
-  precio_por_turno: number
-  dias_operativos: number
-  hora_apertura: string
-  hora_cierre: string
-  duracion_turno?: number
-  fotos?: string
-}
 
-export async function crearCancha(canchaData: CanchaData) {
+
+export async function crearCancha(canchaData: Omit<CanchaData, "id">) {
     try {
         return await fetchApi(`/canchas`, {
         method: "POST",
@@ -187,39 +180,19 @@ export interface PartidoCreateData {
   cupos_disponibles?: number;
 }
 
-export interface PartidoData {
-  id: number;
-  cancha_id: number;
-  fecha: string;
-  horario: string;
-  modalidad: string;
-  tipo: string;
-  cantidad_jugadores: number;
-  cupos_disponibles: number;
-  descripcion?: string;
-  estado: string;
-  cancha?: {
-    id: number;
-    nombre: string;
-    zona: string;
-    direccion: string;
-    duracion_turno?: number;
-  };
-  organizador?: UserProfile;
-  jugadores?: UserProfile[];
-}
 
-export async function getMisPartidos() {
+
+export async function getMisPartidos(): Promise<import("@/lib/schemas").MisPartidosData> {
     try {
-        return await fetchApi(`/partidos/mis-partidos`);
+        return await fetchApi(`/partidos/mis-partidos`, {}, MisPartidosSchema);
       } catch (error: any) {
         throw new Error(error.message || "Error al cargar partidos");
       }
 }
 
-export async function getMisCanchas() {
+export async function getMisCanchas(): Promise<CanchaData[]> {
     try {
-        return await fetchApi(`/canchas/me`);
+        return await fetchApi(`/canchas/me`, {}, CanchaArraySchema);
       } catch (error: any) {
         throw new Error(error.message || "Error al cargar mis canchas");
       }
@@ -227,7 +200,7 @@ export async function getMisCanchas() {
 
 export async function getCanchas(): Promise<CanchaData[]> {
     try {
-        return await fetchApi(`/canchas`);
+        return await fetchApi(`/canchas`, {}, CanchaArraySchema);
       } catch (error: any) {
         throw new Error(error.message || "Error al cargar las canchas");
       }
@@ -589,28 +562,7 @@ export interface EquipoInscripto {
   escudo?: string
 }
 
-export interface TorneoData {
-  id: number
-  nombre: string
-  fecha_inicio: string
-  fecha_fin: string
-  formato: string
-  zona: string
-  dias_operativos: number
-  franja_horaria: string
-  min_integrantes_por_equipo: number
-  max_equipos: number
-  costo_inscripcion: number
-  ida_y_vuelta: boolean
-  fase_final?: string | null
-  descripcion?: string
-  reglas?: string
-  estado: string
-  organizador_id: number
-  equipos_inscriptos: number
-  equipos?: EquipoInscripto[]
-  lugar: string
-}
+
 
 export async function editarTorneo(torneoId: string | number, torneoData: TorneoUpdateData): Promise<TorneoData> {
     try {
@@ -699,9 +651,7 @@ export async function crearTorneo(data: TorneoCreateData): Promise<TorneoData> {
 
 export async function getTorneosDisponibles(): Promise<TorneoData[]> {
     try {
-        return await fetchApi(`/api/torneos/`, {
-        method: "GET"
-      });
+        return await fetchApi(`/api/torneos/`, { method: "GET" }, TorneoArraySchema);
       } catch (error: any) {
         throw new Error(error.message || "Error al cargar torneos abiertos");
       }
@@ -709,9 +659,7 @@ export async function getTorneosDisponibles(): Promise<TorneoData[]> {
 
 export async function getMisTorneos(): Promise<TorneoData[]> {
     try {
-        return await fetchApi(`/api/torneos/mis-torneos`, {
-        method: "GET"
-      });
+        return await fetchApi(`/api/torneos/mis-torneos`, { method: "GET" }, TorneoArraySchema);
       } catch (error: any) {
         throw new Error(error.message || "Error al cargar mis torneos");
       }
@@ -719,9 +667,7 @@ export async function getMisTorneos(): Promise<TorneoData[]> {
 
 export async function getTorneo(id: number): Promise<TorneoData> {
     try {
-        return await fetchApi(`/api/torneos/${id}`, {
-        method: "GET"
-      });
+        return await fetchApi(`/api/torneos/${id}`, { method: "GET" }, TorneoSchema);
       } catch (error: any) {
         throw new Error(error.message || "Torneo no encontrado");
       }
@@ -1029,15 +975,7 @@ export interface EquipoInscripto {
   escudo?: string
 }
 
-export interface TorneoData extends TorneoCreateData {
-  id: number
-  estado: string // "Abierto para inscripción", "En curso", "Finalizado", "Cancelado"
-  organizador_id: number
-  equipos_inscriptos: number
-  equipos?: EquipoInscripto[]
-  max_integrantes_por_equipo: number
-  rol_usuario?: "Organizador" | "Jugador"
-}
+
 
 // Almacenamiento en memoria para simular backend
 let mockTorneos: TorneoData[] = [
@@ -1429,4 +1367,4 @@ export async function getIngresos(
   return fetchEstadistica("ingresos", buildEstadisticaParams(fechaDesde, fechaHasta, canchaId))
 }
 
-export { API_URL, getAccessToken };
+

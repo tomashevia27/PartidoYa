@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL
   || (typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.hostname}:8000`
@@ -22,7 +24,11 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchApi<T>(
+  endpoint: string, 
+  options: RequestInit = {}, 
+  schema?: z.ZodType<T>
+): Promise<T> {
   const token = getAccessToken();
   const headers = new Headers(options.headers || {});
   
@@ -75,6 +81,18 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
     }
 
     throw new ApiError(errorMessage, response.status, data);
+  }
+
+  if (schema) {
+    try {
+      return schema.parse(data);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        console.error("Zod Validation Error:", error.errors);
+        throw new ApiError("Error de validación: La respuesta del servidor no tiene el formato esperado.", 500, error.errors);
+      }
+      throw error;
+    }
   }
 
   return data as T;

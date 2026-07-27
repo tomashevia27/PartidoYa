@@ -35,25 +35,10 @@ import {
   type UserProfile,
   type PartidoDisponibleFilters,
   type FiltrosDisponiblesData,
-  type TorneoData
+  type TorneoData,
+  type CanchaData
 } from "@/hooks/use-api"
 import { Trophy } from "lucide-react"
-
-interface Cancha {
-  id: number
-  nombre: string
-  tipo_superficie: string
-  tamano: number
-  iluminacion: boolean
-  zona: string
-  direccion: string
-  precio_por_turno: number
-  dias_operativos_texto: string
-  hora_apertura: string
-  hora_cierre: string
-  fotos: string | null
-  activa: boolean
-}
 
 function FootballIcon({ className }: { className?: string }) {
   return (
@@ -137,7 +122,7 @@ export default function HomePage() {
   }
 
   // Admin state
-  const [canchas, setCanchas] = useState<Cancha[]>([])
+  const [canchas, setCanchas] = useState<CanchaData[]>([])
   const [adminTorneos, setAdminTorneos] = useState<TorneoData[]>([])
 
   // Jugador state
