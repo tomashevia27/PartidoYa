@@ -1,10 +1,6 @@
+import { fetchApi, API_URL, getAccessToken } from "@/lib/api-client";
+
 "use client"
-
-export const API_URL = process.env.NEXT_PUBLIC_API_URL
-  || (typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : "http://localhost:8000")
-
 const CLOUD_NAME = "dzsrgcgq6"
 const UPLOAD_PRESET = "PartidoYa_preset"
 
@@ -22,14 +18,6 @@ export interface UserData {
 
 export interface UserProfile extends UserData {
   id: number
-}
-
-function getAccessToken(): string {
-  const token = sessionStorage.getItem("partidoya_auth_access_token")
-  if (!token) {
-    throw new Error("No hay una sesión activa")
-  }
-  return token
 }
 
 export async function uploadImageToCloudinary(file: File): Promise<string> {
@@ -57,40 +45,28 @@ export async function loginUser(
   email: string,
   password: string
 ): Promise<{ usuario_id: number; rol: string; access_token: string; token_type: string }> {
-  const response = await fetch(`${API_URL}/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
+  try {
+    return await fetchApi(`/login`, {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  } catch (error: any) {
+    if (error.data?.detail && Array.isArray(error.data.detail)) {
       throw new Error("Por favor, ingresá un formato de email válido.")
     }
-    throw new Error(data.detail || "Error al iniciar sesión")
+    throw new Error(error.message || "Error al iniciar sesión");
   }
-
-  return data
 }
 
 export async function registerUser(userData: UserData): Promise<UserProfile> {
-  const response = await fetch(`${API_URL}/registro`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(userData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      const messages = data.detail.map((err: { loc: string[] }) => {
+  try {
+    return await fetchApi(`/registro`, {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
+  } catch (error: any) {
+    if (error.data?.detail && Array.isArray(error.data.detail)) {
+      const messages = error.data.detail.map((err: { loc: string[] }) => {
         const campo = err.loc[err.loc.length - 1]
         switch (campo) {
           case "nombre": return "• El nombre no puede estar vacío."
@@ -104,74 +80,54 @@ export async function registerUser(userData: UserData): Promise<UserProfile> {
           default: return `• Por favor, revisá el campo: ${campo}.`
         }
       })
-
-      throw new Error("Revisá los datos ingresados: " + messages.join("\n"))
+      throw new Error("Revisá los datos ingresados:\n" + messages.join("\n"))
     }
-    throw new Error(data.detail || "Error al registrarse")
+    throw new Error(error.message || "Error al registrarse");
   }
-
-  return data
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
-  const response = await fetch(`${API_URL}/usuarios/me`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar el perfil")
-  }
-
-  return data
+    try {
+        return await fetchApi(`/usuarios/me`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar el perfil");
+      }
 }
 
 
 export async function confirmEmail(email: string, code: string): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/confirmar-email`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, code }),
-  })
-
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || data.mensaje || "Error al confirmar email")
-  return data
+    try {
+        return await fetchApi(`/confirmar-email`, {
+        method: "POST",
+        body: JSON.stringify({ email, code }),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al confirmar email");
+      }
 }
 
 export async function resendCode(email: string): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/reenviar-codigo`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  })
-
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || data.mensaje || "Error al reenviar código")
-  return data
+    try {
+        return await fetchApi(`/reenviar-codigo`, {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al reenviar código");
+      }
 }
 
 export async function updateUserProfile(
   userData: Partial<UserData>
 ): Promise<UserProfile> {
-  const response = await fetch(`${API_URL}/usuarios/me`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(userData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al actualizar el perfil")
-  }
-
-  return data
+    try {
+        return await fetchApi(`/usuarios/me`, {
+        method: "PUT",
+        body: JSON.stringify(userData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al actualizar el perfil");
+      }
 }
 
 export interface CanchaData {
@@ -191,64 +147,35 @@ export interface CanchaData {
 }
 
 export async function crearCancha(canchaData: CanchaData) {
-  const response = await fetch(`${API_URL}/canchas`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(canchaData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(data.detail || "Error al crear la cancha")
-  }
-
-  return data
+    try {
+        return await fetchApi(`/canchas`, {
+        method: "POST",
+        body: JSON.stringify(canchaData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 export async function actualizarCancha(canchaId: number | string, canchaData: Partial<CanchaData>) {
-  const response = await fetch(`${API_URL}/canchas/${canchaId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(canchaData),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(data.detail || "Error al actualizar la cancha")
-  }
-
-  return data
+    try {
+        return await fetchApi(`/canchas/${canchaId}`, {
+        method: "PUT",
+        body: JSON.stringify(canchaData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 export async function eliminarCancha(canchaId: number | string) {
-  const response = await fetch(`${API_URL}/canchas/${canchaId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al eliminar la cancha")
-  }
-
-  return data
+    try {
+        return await fetchApi(`/canchas/${canchaId}`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al eliminar la cancha");
+      }
 }
 
 export interface PartidoCreateData {
@@ -283,133 +210,89 @@ export interface PartidoData {
 }
 
 export async function getMisPartidos() {
-  const response = await fetch(`${API_URL}/partidos/mis-partidos`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar partidos")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/mis-partidos`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar partidos");
+      }
 }
 
 export async function getMisCanchas() {
-  const response = await fetch(`${API_URL}/canchas/me`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar mis canchas")
-  }
-  return data
+    try {
+        return await fetchApi(`/canchas/me`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar mis canchas");
+      }
 }
 
 export async function getCanchas(): Promise<CanchaData[]> {
-  const response = await fetch(`${API_URL}/canchas`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar las canchas")
-  }
-  return data
+    try {
+        return await fetchApi(`/canchas`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar las canchas");
+      }
 }
 
 export async function getPartido(partidoId: string | number): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos/${partidoId}`)
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar el partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/${partidoId}`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar el partido");
+      }
 }
 
 export async function crearPartido(partidoData: PartidoCreateData): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(partidoData),
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(data.detail || "Error al crear el partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos`, {
+        method: "POST",
+        body: JSON.stringify(partidoData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 export async function cancelarPartido(partidoId: string | number): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos/${partidoId}/cancelar`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cancelar el partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/${partidoId}/cancelar`, {
+        method: "PATCH"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cancelar el partido");
+      }
 }
 
 export async function inscribirseAPartido(
   partidoId: string | number
 ): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos/${partidoId}/inscribirse`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al inscribirse al partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/${partidoId}/inscribirse`, {
+        method: "POST"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al inscribirse al partido");
+      }
 }
 
 export async function bajarseDePartido(partidoId: string | number): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos/${partidoId}/bajarse`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al darse de baja del partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/${partidoId}/bajarse`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al darse de baja del partido");
+      }
 }
 
 export async function editarPartido(partidoId: string | number, partidoData: PartidoCreateData): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/partidos/${partidoId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(partidoData),
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(data.detail || "Error al editar el partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/partidos/${partidoId}`, {
+        method: "PUT",
+        body: JSON.stringify(partidoData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 // ─────────────────────────────────────────────
@@ -429,18 +312,13 @@ export async function getPartidosDisponibles(filters?: PartidoDisponibleFilters)
   if (filters?.fecha) params.set("fecha", filters.fecha)
 
   const queryString = params.toString()
-  const url = `${API_URL}/partidos/disponibles${queryString ? `?${queryString}` : ""}`
+  const endpoint = `/partidos/disponibles${queryString ? `?${queryString}` : ""}`
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar partidos disponibles")
+  try {
+    return await fetchApi(endpoint);
+  } catch (error: any) {
+    throw new Error(error.message || "Error al cargar partidos disponibles");
   }
-  return data
 }
 
 export interface FiltroOpcion {
@@ -454,16 +332,11 @@ export interface FiltrosDisponiblesData {
 }
 
 export async function getFiltrosDisponibles(): Promise<FiltrosDisponiblesData> {
-  const response = await fetch(`${API_URL}/partidos/filtros`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar opciones de filtros");
-  }
-  return data;
+    try {
+        return await fetchApi(`/partidos/filtros`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar opciones de filtros");
+      }
 }
 
 // ─────────────────────────────────────────────
@@ -499,85 +372,59 @@ export async function getNotificaciones(
   params.set("offset", String(offset))
 
   const queryString = params.toString()
-  const response = await fetch(`${API_URL}/notificaciones?${queryString}`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar notificaciones")
+  try {
+    return await fetchApi(`/notificaciones?${queryString}`);
+  } catch (error: any) {
+    throw new Error(error.message || "Error al cargar notificaciones");
   }
-  return data
 }
 
 export async function getConteoNoLeidas(): Promise<ConteoNoLeidas> {
-  const response = await fetch(`${API_URL}/notificaciones/no-leidas/count`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al obtener conteo de notificaciones")
-  }
-  return data
+    try {
+        return await fetchApi(`/notificaciones/no-leidas/count`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al obtener conteo de notificaciones");
+      }
 }
 
 export async function marcarNotificacionLeida(notificacionId: number): Promise<NotificacionData> {
-  const response = await fetch(`${API_URL}/notificaciones/${notificacionId}/leer`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al marcar notificación como leída")
-  }
-  return data
+    try {
+        return await fetchApi(`/notificaciones/${notificacionId}/leer`, {
+        method: "PATCH"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al marcar notificación como leída");
+      }
 }
 
 export async function marcarTodasLeidas(): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/notificaciones/leer-todas`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al marcar notificaciones como leídas")
-  }
-  return data
+    try {
+        return await fetchApi(`/notificaciones/leer-todas`, {
+        method: "PATCH"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al marcar notificaciones como leídas");
+      }
 }
 
 export async function eliminarNotificacion(notificacionId: number): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/notificaciones/${notificacionId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al eliminar notificación")
-  }
-  return data
+    try {
+        return await fetchApi(`/notificaciones/${notificacionId}`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al eliminar notificación");
+      }
 }
 
 export async function eliminarTodasNotificaciones(): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/notificaciones`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al eliminar notificaciones")
-  }
-  return data
+    try {
+        return await fetchApi(`/notificaciones`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al eliminar notificaciones");
+      }
 }
 
 // ─────────────────────────────────────────────
@@ -614,29 +461,23 @@ export interface TurnosRespuesta {
 }
 
 export async function getTurnos(canchaId: number | string, fecha: string, excluirPartidoId?: number): Promise<TurnosRespuesta> {
-  let url = `${API_URL}/canchas/${canchaId}/turnos?fecha=${fecha}`
+  let url = `/canchas/${canchaId}/turnos?fecha=${fecha}`
   if (excluirPartidoId !== undefined) {
     url += `&excluir_partido_id=${excluirPartidoId}`
   }
-  const response = await fetch(url)
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar los turnos")
+  try {
+    return await fetchApi(url);
+  } catch (error: any) {
+    throw new Error(error.message || "Error al cargar los turnos");
   }
-  return data
 }
 
 export async function getAgenda(canchaId: number | string, fecha: string): Promise<AgendaData> {
-  const response = await fetch(`${API_URL}/canchas/${canchaId}/agenda?fecha=${fecha}`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cargar la agenda")
-  }
-  return data
+    try {
+        return await fetchApi(`/canchas/${canchaId}/agenda?fecha=${fecha}`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar la agenda");
+      }
 }
 
 export interface ReservaManualData {
@@ -649,69 +490,45 @@ export interface ReservaManualData {
 }
 
 export async function crearReservaManual(reservaData: ReservaManualData): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/reservas/manual`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(reservaData),
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(data.detail || "Error al crear la reserva manual")
-  }
-  return data
+    try {
+        return await fetchApi(`/reservas/manual`, {
+        method: "POST",
+        body: JSON.stringify(reservaData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 export async function bloquearTurno(data: ReservaManualData): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/reservas/bloquear`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(data),
-  })
-  const result = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(result.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(result.detail || "Error al bloquear el turno")
-  }
-  return result
+    try {
+        return await fetchApi(`/reservas/bloquear`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 export async function desbloquearTurno(partidoId: number): Promise<{ mensaje: string }> {
-  const response = await fetch(`${API_URL}/reservas/bloquear/${partidoId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al desbloquear el turno")
-  }
-  return data
+    try {
+        return await fetchApi(`/reservas/bloquear/${partidoId}`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al desbloquear el turno");
+      }
 }
 
 export async function cancelarReservaDueno(partidoId: number): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/reservas/${partidoId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cancelar la reserva")
-  }
-  return data
+    try {
+        return await fetchApi(`/reservas/${partidoId}`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cancelar la reserva");
+      }
 }
 
 export interface ReprogramarReservaData {
@@ -724,22 +541,14 @@ export async function reprogramarReserva(
   partidoId: number,
   data: ReprogramarReservaData
 ): Promise<PartidoData> {
-  const response = await fetch(`${API_URL}/reservas/${partidoId}/reprogramar`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(data),
-  })
-  const result = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(result.detail)) {
-      throw new Error("Revisá los datos ingresados.")
-    }
-    throw new Error(result.detail || "Error al reprogramar la reserva")
-  }
-  return result
+    try {
+        return await fetchApi(`/reservas/${partidoId}/reprogramar`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Revisá los datos ingresados.");
+      }
 }
 
 // ─────────────────────────────────────────────
@@ -804,23 +613,14 @@ export interface TorneoData {
 }
 
 export async function editarTorneo(torneoId: string | number, torneoData: TorneoUpdateData): Promise<TorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(torneoData),
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      const msgs = data.detail.map((e: any) => e.loc.join('.') + ': ' + e.msg).join(', ')
-      throw new Error("Revisá los datos ingresados: " + msgs)
-    }
-    throw new Error(data.detail || "Error al editar el torneo")
-  }
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}`, {
+        method: "PATCH",
+        body: JSON.stringify(torneoData),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al editar el torneo");
+      }
 }
 
 export interface TorneoMisActividades {
@@ -887,121 +687,85 @@ function normalizarTorneo(t: any): TorneoData {
 }
 
 export async function crearTorneo(data: TorneoCreateData): Promise<TorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(data),
-  })
-
-  const result = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(result.detail)) {
-      const erroresCampos = result.detail
-        .map((err: any) => `• ${err.msg}`)
-        .join("\n")
-      throw new Error("Errores de validación:\n" + erroresCampos)
-    }
-    throw new Error(result.detail || "Error al crear el torneo")
-  }
-  return result
+    try {
+        return await fetchApi(`/api/torneos/`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al crear el torneo");
+      }
 }
 
 export async function getTorneosDisponibles(): Promise<TorneoData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" }
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar torneos abiertos")
-  return (data as any[]).map(normalizarTorneo)
+    try {
+        return await fetchApi(`/api/torneos/`, {
+        method: "GET"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar torneos abiertos");
+      }
 }
 
 export async function getMisTorneos(): Promise<TorneoData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/mis-torneos`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-
-  const data: MisTorneosResponse = await response.json()
-  if (!response.ok) throw new Error((data as any).detail || "Error al cargar mis torneos")
-
-  const proximos = (data.proximos || []).map(t => normalizarTorneo({ ...t, rol_usuario: t.rol }))
-  const enCurso = (data.en_curso || []).map(t => normalizarTorneo({ ...t, rol_usuario: t.rol }))
-  const finalizados = (data.finalizados || []).map(t => normalizarTorneo({ ...t, rol_usuario: t.rol }))
-  const cancelados = (data.cancelados || []).map(t => normalizarTorneo({ ...t, rol_usuario: t.rol }))
-
-  return [...proximos, ...enCurso, ...finalizados, ...cancelados]
+    try {
+        return await fetchApi(`/api/torneos/mis-torneos`, {
+        method: "GET"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar mis torneos");
+      }
 }
 
 export async function getTorneo(id: number): Promise<TorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/${id}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" }
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Torneo no encontrado")
-  return normalizarTorneo(data)
+    try {
+        return await fetchApi(`/api/torneos/${id}`, {
+        method: "GET"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Torneo no encontrado");
+      }
 }
 
 export async function inscribirEquipo(torneoId: number, data: InscripcionData): Promise<any> {
   const jugadoresParseados: { nombre: string; email: string }[] = JSON.parse(data.jugadores)
   const emails = jugadoresParseados.map(j => j.email)
 
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/inscripciones`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify({
-      nombre: data.nombre_equipo,
-      jugadores_emails: emails,
-      escudo: data.escudo || ""
-    }),
-  })
-
-  const result = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(result.detail)) {
+  try {
+    return await fetchApi(`/api/torneos/${torneoId}/inscripciones`, {
+      method: "POST",
+      body: JSON.stringify({
+        nombre: data.nombre_equipo,
+        jugadores_emails: emails,
+        escudo: data.escudo || ""
+      }),
+    });
+  } catch (error: any) {
+    if (error.data?.detail && Array.isArray(error.data.detail)) {
       throw new Error("Revisá los datos cargados en la plantilla del equipo.")
     }
-    throw new Error(result.detail || "Error al inscribir el equipo.")
+    throw new Error(error.message || "Error al inscribir el equipo.");
   }
-  return result
 }
 
 export async function cancelarTorneo(torneoId: number): Promise<TorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/cancelar`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al cancelar el torneo")
-  }
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/cancelar`, {
+        method: "POST"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cancelar el torneo");
+      }
 }
 
 export async function bajarseDeTorneo(torneoId: number): Promise<TorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/inscripciones`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || "Error al darse de baja del torneo")
-  }
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/inscripciones`, {
+        method: "DELETE"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al darse de baja del torneo");
+      }
 }
 
 export interface PartidoTorneoData {
@@ -1072,17 +836,19 @@ export interface BracketResponse {
 }
 
 export async function getFixturePorFechas(torneoId: number): Promise<FixtureResponse> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/fixture`)
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar fixture por fechas")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/fixture`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar fixture por fechas");
+      }
 }
 
 export async function getBracketTorneo(torneoId: number): Promise<BracketResponse> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/bracket`)
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar bracket")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/bracket`);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar bracket");
+      }
 }
 
 export interface CargarResultadoData {
@@ -1145,74 +911,64 @@ export interface TablaPosicionData {
 }
 
 export async function generarFixture(torneoId: number): Promise<PartidoTorneoData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/fixture`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al generar fixture")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/fixture`, {
+        method: "POST"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al generar fixture");
+      }
 }
 
 export async function getFixtureTorneo(torneoId: number): Promise<PartidoTorneoData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/partidos`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar fixture")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/partidos`, {
+        method: "GET"
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar fixture");
+      }
 }
 
 export async function cargarResultadoPartido(partidoId: number, payload: CargarResultadoData): Promise<PartidoTorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/partidos/${partidoId}/resultado`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(payload)
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error(data.detail[0]?.msg || "Error de validación")
-    }
-    throw new Error(data.detail || "Error al cargar resultado")
-  }
-  return data
+    try {
+        return await fetchApi(`/api/torneos/partidos/${partidoId}/resultado`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error de validación");
+      }
 }
 
 export async function getEstadisticasTorneo(torneoId: number): Promise<EstadisticasTorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/estadisticas`, {
-    method: "GET",
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar estadísticas")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/estadisticas`, {
+        method: "GET",
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar estadísticas");
+      }
 }
 
 export async function getTopJugadores(torneoId: number, tipo: "goleadores" | "amarillas" | "rojas", limit: number = 10): Promise<TopJugadorData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/top/${tipo}?limit=${limit}`, {
-    method: "GET",
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || `Error al cargar top de ${tipo}`)
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/top/${tipo}?limit=${limit}`, {
+        method: "GET",
+      });
+      } catch (error: any) {
+        throw new Error(error.message || `Error al cargar top de ${tipo}`);
+      }
 }
 
 export async function getTablaPosiciones(torneoId: number): Promise<TablaPosicionData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/tabla-posiciones`, {
-    method: "GET",
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar tabla de posiciones")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/tabla-posiciones`, {
+        method: "GET",
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar tabla de posiciones");
+      }
 }
 
 export interface VallaInvictaData {
@@ -1222,12 +978,13 @@ export interface VallaInvictaData {
 }
 
 export async function getVallasInvictas(torneoId: number, limit: number = 10): Promise<VallaInvictaData[]> {
-  const response = await fetch(`${API_URL}/api/torneos/${torneoId}/top/vallas-invictas?limit=${limit}`, {
-    method: "GET",
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.detail || "Error al cargar vallas invictas")
-  return data
+    try {
+        return await fetchApi(`/api/torneos/${torneoId}/top/vallas-invictas?limit=${limit}`, {
+        method: "GET",
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar vallas invictas");
+      }
 }
 
 export interface ProgramarPartidoData {
@@ -1237,22 +994,14 @@ export interface ProgramarPartidoData {
 }
 
 export async function programarPartido(partidoId: number, payload: ProgramarPartidoData): Promise<PartidoTorneoData> {
-  const response = await fetch(`${API_URL}/api/torneos/partidos/${partidoId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-    body: JSON.stringify(payload),
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    if (Array.isArray(data.detail)) {
-      throw new Error(data.detail[0]?.msg || "Error de validación")
-    }
-    throw new Error(data.detail || "Error al programar el partido")
-  }
-  return data
+    try {
+        return await fetchApi(`/api/torneos/partidos/${partidoId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+      } catch (error: any) {
+        throw new Error(error.message || "Error de validación");
+      }
 }
 
 /* 
@@ -1604,16 +1353,11 @@ function buildEstadisticaParams(
 }
 
 async function fetchEstadistica<T>(endpoint: string, params: string): Promise<T> {
-  const response = await fetch(`${API_URL}/estadisticas/${endpoint}${params}`, {
-    headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
-    },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(data.detail || `Error al cargar ${endpoint}`)
-  }
-  return data
+    try {
+        return await fetchApi(`/estadisticas/${endpoint}${params}`);
+      } catch (error: any) {
+        throw new Error(error.message || `Error al cargar ${endpoint}`);
+      }
 }
 
 export async function getKpis(canchaId?: number): Promise<KpiResumen> {
@@ -1684,3 +1428,5 @@ export async function getIngresos(
 ): Promise<IngresosRespuesta> {
   return fetchEstadistica("ingresos", buildEstadisticaParams(fechaDesde, fechaHasta, canchaId))
 }
+
+export { API_URL, getAccessToken };
