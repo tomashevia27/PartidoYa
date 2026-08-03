@@ -4,63 +4,33 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, MapPin, Calendar, Clock, Users, Tag, Info, CheckCircle2, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getPartido, type PartidoData, getUserProfile, UserProfile, cancelarPartido, inscribirseAPartido, bajarseDePartido, API_URL } from "@/hooks/use-api"
-import Swal from "sweetalert2"
 import { CountdownTimer } from "@/components/CountdownTimer"
-
-type CanchaDetalle = {
-  id: number
-  nombre: string
-  zona: string
-  direccion: string
-  duracion_turno?: number
-}
+import { usePartidoDetalle } from "@/hooks/use-partido-detalle"
 
 export default function PartidoDetallePage() {
   const params = useParams()
   const router = useRouter()
   const partidoId = params.id as string
 
-  const [partido, setPartido] = useState<PartidoData | null>(null)
-  const [cancha, setCancha] = useState<CanchaDetalle | null>(null)
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const [isJoining, setIsJoining] = useState(false)
-  const [isLeaving, setIsLeaving] = useState(false)
-  const [selectedPlayer, setSelectedPlayer] = useState<UserProfile | null>(null)
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const pData = await getPartido(partidoId)
-        setPartido(pData)
-
-        // Luego de obtener el partido, buscamos los detalles de la cancha
-        const res = await fetch(`${API_URL}/canchas/${pData.cancha_id}`)
-        if (res.ok) {
-          const cData = await res.json()
-          setCancha(cData)
-        }
-
-        try {
-          const user = await getUserProfile()
-          setCurrentUser(user)
-        } catch (e) {
-          // No user logged in or error
-        }
-      } catch (error) {
-        console.warn("Error al cargar detalles:", error)
-        router.push("/profile")
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    if (partidoId) {
-      loadData()
-    }
-  }, [partidoId, router])
+  const {
+    partido,
+    cancha,
+    currentUser,
+    isLoading,
+    isCancelling,
+    isJoining,
+    isLeaving,
+    selectedPlayer,
+    setSelectedPlayer,
+    confirmedCount,
+    spotsLeft,
+    canEditOrCancel,
+    canJoin,
+    canLeave,
+    handleCancel,
+    handleJoin,
+    handleLeave
+  } = usePartidoDetalle(partidoId)
 
   if (isLoading) {
     return (
@@ -88,194 +58,6 @@ export default function PartidoDetallePage() {
     const endH = date.getHours().toString().padStart(2, '0');
     const endM = date.getMinutes().toString().padStart(2, '0');
     return `de ${startStr} a ${endH}:${endM}hs`;
-  }
-
-  const confirmedCount = partido.cantidad_jugadores - partido.cupos_disponibles
-  const spotsLeft = partido.cupos_disponibles
-
-  const isOrganizer = !!(currentUser && partido.organizador && currentUser.id === partido.organizador.id)
-  const isJoined = !!(currentUser && partido.jugadores?.some(j => j.id === currentUser.id))
-  const canEditOrCancel = isOrganizer && partido.estado?.toLowerCase() !== "cancelado"
-  const canJoin = partido.tipo === "abierto" && partido.estado?.toLowerCase() !== "cancelado" && !isOrganizer && !isJoined && spotsLeft > 0 && currentUser?.rol !== "admin"
-  const canLeave = partido.tipo === "abierto" && partido.estado?.toLowerCase() !== "cancelado" && !isOrganizer && isJoined
-
-  const handleCancel = async () => {
-    const date = new Date(`${partido.fecha}T${partido.horario}`)
-    const now = new Date()
-    const hoursDifference = (date.getTime() - now.getTime()) / (1000 * 60 * 60)
-    const cancelacionAnticipada = hoursDifference >= 24
-
-    if (cancelacionAnticipada) {
-      const result = await Swal.fire({
-        title: "¿Cancelar partido?",
-        text: "Estás por cancelar este partido.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#EF4444",
-        cancelButtonColor: "#6B7280",
-        confirmButtonText: "Sí, cancelar",
-        cancelButtonText: "No, mantener"
-      })
-
-      if (result.isConfirmed) {
-        setIsCancelling(true)
-        try {
-          await cancelarPartido(partido.id)
-          await Swal.fire({
-            title: "Reserva cancelada",
-            text: "Reserva cancelada con éxito. En las próximas horas la seña será reembolsada.",
-            icon: "success",
-            confirmButtonColor: "#FF6B4A"
-          })
-          const updated = await getPartido(partidoId)
-          setPartido(updated)
-        } catch (error: any) {
-          Swal.fire("Error", error.message || "No se pudo cancelar el partido", "error")
-        } finally {
-          setIsCancelling(false)
-        }
-      }
-    } else {
-      const result = await Swal.fire({
-        title: "¿Cancelar partido?",
-        text: "Si cancelás este partido, no se reembolsará el dinero. ¿Estás seguro?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#EF4444",
-        cancelButtonColor: "#6B7280",
-        confirmButtonText: "Sí, cancelar",
-        cancelButtonText: "No, mantener"
-      })
-
-      if (result.isConfirmed) {
-        setIsCancelling(true)
-        try {
-          await cancelarPartido(partido.id)
-          await Swal.fire({
-            title: "Baja confirmada",
-            icon: "info",
-            confirmButtonColor: "#FF6B4A"
-          })
-          const updated = await getPartido(partidoId)
-          setPartido(updated)
-        } catch (error: any) {
-          Swal.fire("Error", error.message || "No se pudo cancelar el partido", "error")
-        } finally {
-          setIsCancelling(false)
-        }
-      }
-    }
-  }
-
-  const handleJoin = async () => {
-    const result = await Swal.fire({
-      title: "¿Confirmar inscripción?",
-      text: "Vas a reservar tu lugar en este partido.",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#FF6B4A",
-      cancelButtonColor: "#6B7280",
-      confirmButtonText: "Sí, anotarme",
-      cancelButtonText: "Cancelar"
-    })
-
-    if (result.isConfirmed) {
-      setIsJoining(true)
-      try {
-        await inscribirseAPartido(partido.id)
-
-        await Swal.fire({
-          title: "¡Reserva iniciada!",
-          text: "Serás redirigido a la pasarela de pago para abonar la seña de la cancha.",
-          icon: "success",
-          confirmButtonColor: "#FF6B4A",
-          confirmButtonText: "Proceder al pago"
-        })
-
-        await Swal.fire({
-          title: "¡Pago exitoso!",
-          text: "Tu lugar fue reservado correctamente.",
-          icon: "success",
-          timer: 2000,
-          showConfirmButton: false
-        })
-
-        const updated = await getPartido(partidoId)
-        setPartido(updated)
-      } catch (error: any) {
-        Swal.fire("Error", error.message || "No se pudo completar la inscripción", "error")
-      } finally {
-        setIsJoining(false)
-      }
-    }
-  }
-
-  const handleLeave = async () => {
-    const date = new Date(`${partido.fecha}T${partido.horario}`)
-    const now = new Date()
-    const hoursDifference = (date.getTime() - now.getTime()) / (1000 * 60 * 60)
-    const cancelacionAnticipada = hoursDifference >= 24
-
-    if (cancelacionAnticipada) {
-      const result = await Swal.fire({
-        title: "¿Darse de baja?",
-        text: "Estás por darte de baja de este partido.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#EF4444",
-        cancelButtonColor: "#6B7280",
-        confirmButtonText: "Sí, darme de baja",
-        cancelButtonText: "Cancelar"
-      })
-
-      if (result.isConfirmed) {
-        setIsLeaving(true)
-        try {
-          await bajarseDePartido(partido.id)
-          await Swal.fire({
-            title: "Inscripción cancelada",
-            text: "Inscripción cancelada con éxito. En las próximas horas la seña será reembolsada.",
-            icon: "success",
-            confirmButtonColor: "#FF6B4A"
-          })
-          const updated = await getPartido(partidoId)
-          setPartido(updated)
-        } catch (error: any) {
-          Swal.fire("Error", error.message || "No se pudo completar la baja", "error")
-        } finally {
-          setIsLeaving(false)
-        }
-      }
-    } else {
-      const result = await Swal.fire({
-        title: "¿Darse de baja?",
-        text: "Si te das de baja de este partido, no se reembolsará el dinero. ¿Estás seguro?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#EF4444",
-        cancelButtonColor: "#6B7280",
-        confirmButtonText: "Sí, darme de baja",
-        cancelButtonText: "Cancelar"
-      })
-
-      if (result.isConfirmed) {
-        setIsLeaving(true)
-        try {
-          await bajarseDePartido(partido.id)
-          await Swal.fire({
-            title: "Baja confirmada",
-            icon: "info",
-            confirmButtonColor: "#FF6B4A"
-          })
-          const updated = await getPartido(partidoId)
-          setPartido(updated)
-        } catch (error: any) {
-          Swal.fire("Error", error.message || "No se pudo completar la baja", "error")
-        } finally {
-          setIsLeaving(false)
-        }
-      }
-    }
   }
 
   return (

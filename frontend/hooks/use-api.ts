@@ -206,6 +206,14 @@ export async function getCanchas(): Promise<CanchaData[]> {
       }
 }
 
+export async function getCancha(canchaId: string | number): Promise<CanchaData> {
+    try {
+        return await fetchApi(`/canchas/${canchaId}`, {}, CanchaSchema);
+      } catch (error: any) {
+        throw new Error(error.message || "Error al cargar la cancha");
+      }
+}
+
 export async function getPartido(partidoId: string | number): Promise<PartidoData> {
     try {
         return await fetchApi(`/partidos/${partidoId}`);
