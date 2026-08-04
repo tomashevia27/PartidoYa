@@ -80,9 +80,14 @@ export default function EditarTorneoPage() {
             try {
                 const data = await getTorneo(Number(id))
                 
-                // Extraer YYYY-MM-DD
-                const fi = new Date(data.fecha_inicio).toISOString().split('T')[0]
-                const ff = new Date(data.fecha_fin).toISOString().split('T')[0]
+                let fi = "";
+                let ff = "";
+                if (data.fecha_inicio) {
+                    fi = new Date(data.fecha_inicio).toISOString().split('T')[0]
+                }
+                if (data.fecha_fin) {
+                    ff = new Date(data.fecha_fin).toISOString().split('T')[0]
+                }
                 
                 const [apertura, cierre] = data.franja_horaria.split('-')
                 const [ah, am] = apertura.split(':')

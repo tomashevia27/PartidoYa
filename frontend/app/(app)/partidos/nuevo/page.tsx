@@ -10,33 +10,53 @@ import Swal from "sweetalert2"
 import { crearPartido, getTurnos, API_URL } from "@/hooks/use-api"
 import { getErrorMessage } from "@/lib/api-client"
 
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { PartidoFormSchema, type PartidoFormValues } from "@/lib/schemas"
+
 function NuevoPartidoForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const canchaId = searchParams.get("canchaId")
+  const canchaIdParam = searchParams.get("canchaId")
 
   const [cancha, setCancha] = useState<any>(null)
   const [todasCanchas, setTodasCanchas] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<PartidoFormValues>({
+    resolver: zodResolver(PartidoFormSchema),
+    defaultValues: {
+      cancha_id: canchaIdParam ? Number(canchaIdParam) : undefined,
+      fecha: "",
+      horario: "",
+      tipo: "abierto",
+      cupos_disponibles: undefined,
+      max_cupos: undefined,
+      descripcion: "",
+    }
+  })
 
-  // Form states
-  const [fecha, setFecha] = useState("")
-  const [horario, setHorario] = useState("")
-  const [tipo, setTipo] = useState("abierto")
-  const [cuposDisponibles, setCuposDisponibles] = useState("")
-  const [descripcion, setDescripcion] = useState("")
+  const watchCanchaId = watch("cancha_id")
+  const watchFecha = watch("fecha")
+  const watchTipo = watch("tipo")
+
   const [turnosDisponibles, setTurnosDisponibles] = useState<{ inicio: string; fin: string; estado: string }[]>([])
+
   
   useEffect(() => {
     if (!cancha) {
       setTurnosDisponibles([])
-      setHorario("")
+      setValue("horario", "")
       return
     }
 
-    if (fecha) {
-      getTurnos(cancha.id, fecha)
+    if (watchFecha) {
+      getTurnos(cancha.id, watchFecha)
         .then(data => {
           const duracion = Number(cancha.duracion_turno) || 60
           const turnos = data.slots.map(s => {
@@ -71,17 +91,19 @@ function NuevoPartidoForm() {
       }
       setTurnosDisponibles(turnos)
     }
-    setHorario("")
-  }, [cancha, fecha])
+    setValue("horario", "")
+  }, [cancha, watchFecha, setValue])
 
   useEffect(() => {
     async function fetchData() {
+      setIsLoading(true)
       try {
-        if (canchaId) {
-          const res = await fetch(`${API_URL}/canchas/${canchaId}`)
+        if (canchaIdParam) {
+          const res = await fetch(`${API_URL}/canchas/${canchaIdParam}`)
           if (res.ok) {
             const data = await res.json()
             setCancha(data)
+            setValue("max_cupos", (data.tamano * 2) - 1)
           } else {
             Swal.fire("Error", "Cancha no encontrada", "error").then(() => router.push("/home"))
           }
@@ -107,44 +129,29 @@ function NuevoPartidoForm() {
     }
 
     fetchData()
-  }, [canchaId, router])
+  }, [canchaIdParam, router, setValue])
 
-
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!cancha || !fecha || !horario || !tipo) {
-      Swal.fire({ title: "Atención", text: "Por favor, elegí una cancha y completá todos los campos requeridos.", icon: "warning", confirmButtonColor: "#FF6B4A" })
-      return
-    }
-
-    const now = new Date()
-    const matchDate = new Date(`${fecha}T${horario}`)
-    if (matchDate <= now) {
-      Swal.fire({ title: "Atención", text: "La fecha y hora del partido deben ser en el futuro.", icon: "warning", confirmButtonColor: "#FF6B4A" })
-      return
-    }
-
-    const cantidadJugadoresNum = cancha?.tamano ? cancha.tamano * 2 : 0;
-
-    if (tipo === "abierto") {
-      const cupos = Number(cuposDisponibles)
-      if (!cupos || cupos < 1 || cupos >= cantidadJugadoresNum) {
-        Swal.fire({ title: "Atención", text: `Para partidos abiertos, indicá cuántos lugares disponibles tenés (entre 1 y ${cantidadJugadoresNum - 1}).`, icon: "warning", confirmButtonColor: "#FF6B4A" })
-        return
+  useEffect(() => {
+    if (!canchaIdParam && watchCanchaId) {
+      const selected = todasCanchas.find((c: any) => c.id === Number(watchCanchaId))
+      setCancha(selected || null)
+      if (selected) {
+        setValue("max_cupos", (selected.tamano * 2) - 1)
       }
     }
+  }, [watchCanchaId, todasCanchas, canchaIdParam, setValue])
 
-    setIsSubmitting(true)
+
+
+  const onSubmit = async (data: PartidoFormValues) => {
     try {
       await crearPartido({
-        cancha_id: Number(cancha.id),
-        fecha,
-        horario,
-        tipo,
-        descripcion: descripcion || undefined,
-        cupos_disponibles: tipo === "abierto" ? Number(cuposDisponibles) : undefined,
+        cancha_id: data.cancha_id,
+        fecha: data.fecha,
+        horario: data.horario,
+        tipo: data.tipo,
+        descripcion: data.descripcion || undefined,
+        cupos_disponibles: data.tipo === "abierto" ? data.cupos_disponibles : undefined,
       })
 
       await Swal.fire({
@@ -168,8 +175,6 @@ function NuevoPartidoForm() {
     } catch (error) {
       console.error("Error al crear el partido:", error)
       Swal.fire("Error", getErrorMessage(error) || "Error al crear el partido", "error")
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -200,24 +205,20 @@ function NuevoPartidoForm() {
             <p className="text-muted-foreground">Configurá los detalles de tu encuentro deportivo.</p>
           </div>
 
-          {!canchaId && (
+          {!canchaIdParam && (
             <div className="space-y-2 mb-6">
               <Label htmlFor="canchaSelect" className="font-medium text-sm">Seleccioná una Cancha *</Label>
               <select
                 id="canchaSelect"
                 className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={cancha?.id || ""}
-                onChange={(e) => {
-                  const selected = todasCanchas.find((c: any) => c.id === Number(e.target.value))
-                  setCancha(selected || null)
-                }}
-                required
+                {...register("cancha_id")}
               >
-                <option value="" disabled>Elegí una cancha disponible</option>
+                <option value="">Elegí una cancha disponible</option>
                 {todasCanchas.map(c => (
                   <option key={c.id} value={c.id}>{c.nombre} - {c.zona}</option>
                 ))}
               </select>
+              {errors.cancha_id && <p className="text-destructive text-sm mt-1">{errors.cancha_id.message}</p>}
             </div>
           )}
 
@@ -260,36 +261,34 @@ function NuevoPartidoForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fecha" className="font-medium text-sm">Fecha *</Label>
                 <Input
                   id="fecha"
                   type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  required
+                  {...register("fecha")}
                   className="bg-input border-0 h-11"
                 />
+                {errors.fecha && <p className="text-destructive text-sm mt-1">{errors.fecha.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="horario" className="font-medium text-sm">Turno *</Label>
                 <select
                   id="horario"
-                  value={horario}
-                  onChange={(e) => setHorario(e.target.value)}
                   className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  required
+                  {...register("horario")}
                   disabled={!cancha}
                 >
-                  <option value="" disabled>Seleccioná un turno</option>
+                  <option value="">Seleccioná un turno</option>
                   {turnosDisponibles.map((turno) => (
                     <option key={turno.inicio} value={turno.inicio} disabled={turno.estado !== "disponible"}>
                       De {turno.inicio} a {turno.fin} hs
                     </option>
                   ))}
                 </select>
+                {errors.horario && <p className="text-destructive text-sm mt-1">{errors.horario.message}</p>}
               </div>
             </div>
 
@@ -318,30 +317,26 @@ function NuevoPartidoForm() {
               <Label htmlFor="tipo" className="font-medium text-sm">Tipo de Partido *</Label>
               <select
                 id="tipo"
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
+                {...register("tipo")}
                 className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                required
               >
                 <option value="abierto">Abierto (Cualquiera puede unirse)</option>
                 <option value="cerrado">Cerrado (Solo invitados)</option>
               </select>
+              {errors.tipo && <p className="text-destructive text-sm mt-1">{errors.tipo.message}</p>}
             </div>
 
-            {tipo === "abierto" && (
+            {watchTipo === "abierto" && (
               <div className="space-y-2">
                 <Label htmlFor="cupos" className="font-medium text-sm">Lugares Disponibles (Cupos) *</Label>
                 <Input
                   id="cupos"
                   type="number"
-                  min="1"
-                  max={cancha?.tamano ? (cancha.tamano * 2) - 1 : 1}
-                  value={cuposDisponibles}
-                  onChange={(e) => setCuposDisponibles(e.target.value)}
+                  {...register("cupos_disponibles")}
                   placeholder="Ej: 3 (si te faltan 3 jugadores)"
-                  required
                   className="bg-input border-0 h-11"
                 />
+                {errors.cupos_disponibles && <p className="text-destructive text-sm mt-1">{errors.cupos_disponibles.message}</p>}
               </div>
             )}
 
@@ -349,11 +344,11 @@ function NuevoPartidoForm() {
               <Label htmlFor="descripcion" className="font-medium text-sm">Descripción (Opcional)</Label>
               <textarea
                 id="descripcion"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                {...register("descripcion")}
                 className="flex min-h-[80px] w-full rounded-lg bg-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Aclaraciones, reglas, o cualquier info extra para los jugadores..."
               />
+              {errors.descripcion && <p className="text-destructive text-sm mt-1">{errors.descripcion.message}</p>}
             </div>
 
 

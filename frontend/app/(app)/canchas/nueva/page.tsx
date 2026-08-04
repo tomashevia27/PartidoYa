@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
@@ -19,95 +21,39 @@ import { useAuthContext } from "@/components/auth-provider"
 import { crearCancha, uploadImageToCloudinary } from "@/hooks/use-api"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
+import { CanchaFormSchema, type CanchaFormValues } from "@/lib/schemas"
 
 export default function NuevaCanchaPage() {
   const router = useRouter()
   const { userId } = useAuthContext()
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    nombre: "",
-    tipo_superficie: "",
-    tamano: "",
-    iluminacion: false,
-    zona: "",
-    direccion: "",
-    precio_por_turno: "",
-    dias_operativos: 31,
-    apertura_h: "",
-    apertura_m: "",
-    cierre_h: "",
-    cierre_m: "",
-  })
   const [foto, setFoto] = useState<File | null>(null)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.type === "checkbox" ? e.target.checked : e.target.value,
-    }))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    // Validaciones
-    const { nombre, tipo_superficie, tamano, zona, direccion, precio_por_turno, dias_operativos, apertura_h, apertura_m, cierre_h, cierre_m } = formData
-
-    if (!nombre || !tipo_superficie || !tamano || !zona || !direccion || !precio_por_turno || !dias_operativos || !apertura_h || !apertura_m || !cierre_h || !cierre_m) {
-      Swal.fire({
-        title: "Atención",
-        text: "Todos los campos obligatorios deben estar completos.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CanchaFormValues>({
+    resolver: zodResolver(CanchaFormSchema),
+    defaultValues: {
+      nombre: "",
+      tipo_superficie: "",
+      tamano: undefined,
+      iluminacion: false,
+      zona: "",
+      direccion: "",
+      precio_por_turno: undefined,
+      dias_operativos: 31,
+      apertura_h: "",
+      apertura_m: undefined,
+      cierre_h: "",
+      cierre_m: undefined,
     }
+  })
 
-    const precio = parseFloat(precio_por_turno)
-    if (isNaN(precio) || precio <= 0) {
-      Swal.fire({
-        title: "Atención",
-        text: "El precio por turno debe ser mayor a cero.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
-    }
-
-    const hora_apertura = `${apertura_h.padStart(2, '0')}:${apertura_m.padStart(2, '0')}`
-    const hora_cierre = `${cierre_h.padStart(2, '0')}:${cierre_m.padStart(2, '0')}`
-
-    const MINUTOS_VALIDOS = ["00", "15", "30", "45"]
-    if (!MINUTOS_VALIDOS.includes(apertura_m) || !MINUTOS_VALIDOS.includes(cierre_m)) {
-      Swal.fire({
-        title: "Atención",
-        text: "Los minutos deben ser 00, 15, 30 o 45.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
-    }
-
-    if (apertura_m !== cierre_m) {
-      Swal.fire({
-        title: "Atención",
-        text: "Los minutos de apertura y cierre deben coincidir para evitar turnos incompletos.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
-    }
-
-    if (hora_cierre <= hora_apertura) {
-      Swal.fire({
-        title: "Atención",
-        text: "La hora de cierre debe ser posterior a la de apertura.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
-    }
-
+  async function onSubmit(data: CanchaFormValues) {
     setIsLoading(true)
 
     try {
@@ -128,15 +74,18 @@ export default function NuevaCanchaPage() {
         }
       }
 
+      const hora_apertura = `${data.apertura_h.padStart(2, '0')}:${data.apertura_m}`
+      const hora_cierre = `${data.cierre_h.padStart(2, '0')}:${data.cierre_m}`
+
       await crearCancha({
-        nombre,
-        tipo_superficie,
-        tamano: parseInt(tamano),
-        iluminacion: formData.iluminacion,
-        zona,
-        direccion,
-        precio_por_turno: precio,
-        dias_operativos,
+        nombre: data.nombre,
+        tipo_superficie: data.tipo_superficie,
+        tamano: data.tamano,
+        iluminacion: data.iluminacion,
+        zona: data.zona,
+        direccion: data.direccion,
+        precio_por_turno: data.precio_por_turno,
+        dias_operativos: data.dias_operativos,
         hora_apertura,
         hora_cierre,
         fotos: fotoUrl,
@@ -151,7 +100,6 @@ export default function NuevaCanchaPage() {
       })
 
       router.push("/home")
-
     } catch (error) {
       Swal.fire({
         title: "No se pudo crear",
@@ -180,15 +128,16 @@ export default function NuevaCanchaPage() {
             <p className="text-muted-foreground">Publicá tu cancha para que los jugadores la encuentren</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nombre" className="font-medium text-sm">Nombre de la cancha *</Label>
-                <Input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} className="bg-input border-0 h-11" />
+                <Input id="nombre" {...register("nombre")} className="bg-input border-0 h-11" />
+                {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tipo_superficie" className="font-medium text-sm">Tipo de superficie *</Label>
-                <Select value={formData.tipo_superficie} onValueChange={(v) => setFormData(p => ({ ...p, tipo_superficie: v }))}>
+                <Select value={watch("tipo_superficie")} onValueChange={(v) => setValue("tipo_superficie", v, { shouldValidate: true })}>
                   <SelectTrigger className="bg-input border-0 h-11"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Sintético">Sintético</SelectItem>
@@ -196,13 +145,14 @@ export default function NuevaCanchaPage() {
                     <SelectItem value="Cemento">Cemento</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.tipo_superficie && <p className="text-red-500 text-sm mt-1">{errors.tipo_superficie.message}</p>}
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="tamano" className="font-medium text-sm">Tamaño (jugadores) *</Label>
-                <Select value={formData.tamano} onValueChange={(v) => setFormData(p => ({ ...p, tamano: v }))}>
+                <Select value={watch("tamano")?.toString() || ""} onValueChange={(v) => setValue("tamano", Number(v), { shouldValidate: true })}>
                   <SelectTrigger className="bg-input border-0 h-11"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="5">Fútbol 5</SelectItem>
@@ -211,16 +161,18 @@ export default function NuevaCanchaPage() {
                     <SelectItem value="11">Fútbol 11</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.tamano && <p className="text-red-500 text-sm mt-1">{errors.tamano.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="precio_por_turno" className="font-medium text-sm">Precio por turno ($) *</Label>
-                <Input id="precio_por_turno" name="precio_por_turno" type="number" min="0" step="100" value={formData.precio_por_turno} onChange={handleChange} className="bg-input border-0 h-11" />
+                <Input id="precio_por_turno" type="number" step="100" {...register("precio_por_turno")} className="bg-input border-0 h-11" />
+                {errors.precio_por_turno && <p className="text-red-500 text-sm mt-1">{errors.precio_por_turno.message}</p>}
               </div>
               <div className="flex items-center justify-center space-x-2 pt-6">
                 <Switch
                   id="iluminacion"
-                  checked={formData.iluminacion}
-                  onCheckedChange={(checked) => setFormData(p => ({ ...p, iluminacion: checked }))}
+                  checked={watch("iluminacion")}
+                  onCheckedChange={(checked) => setValue("iluminacion", checked, { shouldValidate: true })}
                 />
                 <Label htmlFor="iluminacion" className="font-medium text-sm">Tiene iluminación</Label>
               </div>
@@ -229,11 +181,13 @@ export default function NuevaCanchaPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="zona" className="font-medium text-sm">Zona/Barrio *</Label>
-                <Input id="zona" name="zona" value={formData.zona} onChange={handleChange} className="bg-input border-0 h-11" />
+                <Input id="zona" {...register("zona")} className="bg-input border-0 h-11" />
+                {errors.zona && <p className="text-red-500 text-sm mt-1">{errors.zona.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="direccion" className="font-medium text-sm">Dirección exacta *</Label>
-                <Input id="direccion" name="direccion" value={formData.direccion} onChange={handleChange} className="bg-input border-0 h-11" />
+                <Input id="direccion" {...register("direccion")} className="bg-input border-0 h-11" />
+                {errors.direccion && <p className="text-red-500 text-sm mt-1">{errors.direccion.message}</p>}
               </div>
             </div>
 
@@ -241,10 +195,10 @@ export default function NuevaCanchaPage() {
               <div className="flex items-center justify-between">
                 <Label className="font-medium text-sm">Días operativos *</Label>
                 <div className="flex gap-2">
-                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setFormData(p => ({ ...p, dias_operativos: 31 }))}>Lun – Vie</button>
-                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setFormData(p => ({ ...p, dias_operativos: 96 }))}>Fin de semana</button>
-                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setFormData(p => ({ ...p, dias_operativos: 127 }))}>Todos los días</button>
-                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setFormData(p => ({ ...p, dias_operativos: 0 }))}>Limpiar</button>
+                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setValue("dias_operativos", 31, { shouldValidate: true })}>Lun – Vie</button>
+                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setValue("dias_operativos", 96, { shouldValidate: true })}>Fin de semana</button>
+                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setValue("dias_operativos", 127, { shouldValidate: true })}>Todos los días</button>
+                  <button type="button" className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all" onClick={() => setValue("dias_operativos", 0, { shouldValidate: true })}>Limpiar</button>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -257,12 +211,13 @@ export default function NuevaCanchaPage() {
                   { abbr: 'Sáb', full: 'Sábado', bit: 5 },
                   { abbr: 'Dom', full: 'Domingo', bit: 6 },
                 ].map(d => {
-                  const active = (formData.dias_operativos >> d.bit) & 1;
+                  const dias_operativos = watch("dias_operativos") || 0;
+                  const active = (dias_operativos >> d.bit) & 1;
                   return (
                     <button
                       key={d.bit}
                       type="button"
-                      onClick={() => setFormData(p => ({ ...p, dias_operativos: p.dias_operativos ^ (1 << d.bit) }))}
+                      onClick={() => setValue("dias_operativos", dias_operativos ^ (1 << d.bit), { shouldValidate: true })}
                       className={`w-[72px] h-[72px] rounded-xl border flex flex-col items-center justify-center gap-[2px] transition-all select-none ${active ? 'bg-primary/10 border-primary border-[1.5px]' : 'bg-background border-border hover:bg-secondary hover:border-primary/50'}`}
                     >
                       <span className={`text-[13px] font-medium ${active ? 'text-primary' : 'text-muted-foreground'}`}>{d.abbr}</span>
@@ -271,15 +226,16 @@ export default function NuevaCanchaPage() {
                   )
                 })}
               </div>
+              {errors.dias_operativos && <p className="text-red-500 text-sm mt-1">{errors.dias_operativos.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="font-medium text-sm">Apertura (24hs) *</Label>
                 <div className="flex items-center space-x-2">
-                  <Input name="apertura_h" type="number" min="0" max="23" placeholder="HH" value={formData.apertura_h} onChange={handleChange} className="bg-input border-0 text-center h-11 w-[80px]" />
+                  <Input type="number" placeholder="HH" {...register("apertura_h")} className="bg-input border-0 text-center h-11 w-[80px]" />
                   <span className="font-bold text-muted-foreground">:</span>
-                  <select name="apertura_m" value={formData.apertura_m} onChange={(e) => setFormData(p => ({ ...p, apertura_m: e.target.value }))} className="flex h-11 w-[80px] rounded-lg bg-input px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select {...register("apertura_m")} className="flex h-11 w-[80px] rounded-lg bg-input px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="" disabled>MM</option>
                     <option value="00">00</option>
                     <option value="15">15</option>
@@ -287,13 +243,14 @@ export default function NuevaCanchaPage() {
                     <option value="45">45</option>
                   </select>
                 </div>
+                {(errors.apertura_h || errors.apertura_m) && <p className="text-red-500 text-sm mt-1">{errors.apertura_h?.message || errors.apertura_m?.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label className="font-medium text-sm">Cierre (24hs) *</Label>
                 <div className="flex items-center space-x-2">
-                  <Input name="cierre_h" type="number" min="0" max="23" placeholder="HH" value={formData.cierre_h} onChange={handleChange} className="bg-input border-0 text-center h-11 w-[80px]" />
+                  <Input type="number" placeholder="HH" {...register("cierre_h")} className="bg-input border-0 text-center h-11 w-[80px]" />
                   <span className="font-bold text-muted-foreground">:</span>
-                  <select name="cierre_m" value={formData.cierre_m} onChange={(e) => setFormData(p => ({ ...p, cierre_m: e.target.value }))} className="flex h-11 w-[80px] rounded-lg bg-input px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select {...register("cierre_m")} className="flex h-11 w-[80px] rounded-lg bg-input px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="" disabled>MM</option>
                     <option value="00">00</option>
                     <option value="15">15</option>
@@ -301,6 +258,7 @@ export default function NuevaCanchaPage() {
                     <option value="45">45</option>
                   </select>
                 </div>
+                {(errors.cierre_h || errors.cierre_m) && <p className="text-red-500 text-sm mt-1">{errors.cierre_h?.message || errors.cierre_m?.message}</p>}
               </div>
             </div>
 

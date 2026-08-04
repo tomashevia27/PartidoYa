@@ -177,8 +177,8 @@ export default function InscripcionTorneoPage() {
             </div>
         )
     }
-    const minJugadoresRequeridos = torneo!.min_integrantes_por_equipo
-    const maxJugadoresPermitidos = torneo!.min_integrantes_por_equipo * 2
+    const minJugadoresRequeridos = torneo ? torneo.min_integrantes_por_equipo : 5
+    const maxJugadoresPermitidos = (torneo ? torneo.min_integrantes_por_equipo : 5) * 2
     const alcanzoMaximoJugadores = jugadores.length >= maxJugadoresPermitidos
 
     const bloqueado = !!errorMsg && (torneo?.estado !== "Abierto para inscripción" || (torneo && torneo.equipos_inscriptos >= torneo.max_equipos));

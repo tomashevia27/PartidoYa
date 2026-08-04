@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
 import { editarPartido, getPartido, getTurnos, type PartidoData, API_URL } from "@/hooks/use-api"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { PartidoFormSchema, type PartidoFormValues } from "@/lib/schemas"
 
 function EditarPartidoForm() {
   const router = useRouter()
@@ -19,14 +22,32 @@ function EditarPartidoForm() {
   const [originalTamano, setOriginalTamano] = useState<number | null>(null)
   const [todasCanchas, setTodasCanchas] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Form states
-  const [fecha, setFecha] = useState("")
-  const [horario, setHorario] = useState("")
-  const [tipo, setTipo] = useState("abierto")
-  const [cuposDisponibles, setCuposDisponibles] = useState("")
-  const [descripcion, setDescripcion] = useState("")
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<PartidoFormValues>({
+    resolver: zodResolver(PartidoFormSchema),
+    defaultValues: {
+      cancha_id: undefined,
+      fecha: "",
+      horario: "",
+      tipo: "abierto",
+      cupos_disponibles: undefined,
+      max_cupos: undefined,
+      descripcion: "",
+    }
+  })
+
+  const watchCanchaId = watch("cancha_id")
+  const watchFecha = watch("fecha")
+  const watchTipo = watch("tipo")
+  const watchHorario = watch("horario")
+
   const [turnosDisponibles, setTurnosDisponibles] = useState<{ inicio: string; fin: string; estado: string }[]>([])
 
   useEffect(() => {
@@ -34,20 +55,28 @@ function EditarPartidoForm() {
       try {
         const data = await getPartido(partidoId)
         setPartido(data)
-        setFecha(data.fecha)
-        setHorario(data.horario.substring(0, 5)) // "HH:MM"
-        setTipo(data.tipo)
-        if (data.cupos_disponibles !== undefined && data.cupos_disponibles !== null) {
-          setCuposDisponibles(data.cupos_disponibles.toString())
-        }
-        setDescripcion(data.descripcion || "")
+        
+        let maxCupos = undefined;
+        let originalTamano = null;
 
         const resCancha = await fetch(`${API_URL}/canchas/${data.cancha_id}`)
         if (resCancha.ok) {
           const canchaData = await resCancha.json()
           setCancha(canchaData)
           setOriginalTamano(canchaData.tamano)
+          originalTamano = canchaData.tamano
+          maxCupos = (canchaData.tamano * 2) - 1;
         }
+
+        reset({
+          cancha_id: data.cancha_id,
+          fecha: data.fecha,
+          horario: data.horario.substring(0, 5), // "HH:MM"
+          tipo: data.tipo as any,
+          cupos_disponibles: data.cupos_disponibles !== undefined && data.cupos_disponibles !== null ? data.cupos_disponibles : undefined,
+          descripcion: data.descripcion || "",
+          max_cupos: maxCupos
+        })
 
         const resTodasCanchas = await fetch(`${API_URL}/canchas`)
         if (resTodasCanchas.ok) {
@@ -60,7 +89,17 @@ function EditarPartidoForm() {
       }
     }
     fetchPartido()
-  }, [partidoId, router])
+  }, [partidoId, router, reset])
+
+  useEffect(() => {
+    if (watchCanchaId && todasCanchas.length > 0) {
+      const selected = todasCanchas.find((c: any) => c.id === Number(watchCanchaId))
+      if (selected && selected.id !== cancha?.id) {
+        setCancha(selected)
+        setValue("max_cupos", (selected.tamano * 2) - 1)
+      }
+    }
+  }, [watchCanchaId, todasCanchas, cancha, setValue])
 
   useEffect(() => {
     if (!cancha) {
@@ -68,8 +107,8 @@ function EditarPartidoForm() {
       return
     }
 
-    if (fecha) {
-      getTurnos(cancha.id, fecha, Number(partidoId))
+    if (watchFecha) {
+      getTurnos(cancha.id, watchFecha, Number(partidoId))
         .then(data => {
           const duracion = Number(cancha.duracion_turno) || 60
           const turnos = data.slots.map(s => {
@@ -104,42 +143,17 @@ function EditarPartidoForm() {
       }
       setTurnosDisponibles(turnos)
     }
-  }, [cancha, fecha, partidoId])
+  }, [cancha, watchFecha, partidoId])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!cancha || !fecha || !horario || !tipo) {
-      Swal.fire({ title: "Atención", text: "Por favor completá todos los campos requeridos.", icon: "warning", confirmButtonColor: "#FF6B4A" })
-      return
-    }
-
-    const now = new Date()
-    const matchDate = new Date(`${fecha}T${horario}`)
-    if (matchDate <= now) {
-      Swal.fire({ title: "Atención", text: "La fecha y hora del partido deben ser en el futuro.", icon: "warning", confirmButtonColor: "#FF6B4A" })
-      return
-    }
-
-    const cantidadJugadoresNum = cancha?.tamano ? cancha.tamano * 2 : 0;
-    
-    if (tipo === "abierto") {
-      const cupos = Number(cuposDisponibles)
-      if (!cupos || cupos < 1 || cupos >= cantidadJugadoresNum) {
-        Swal.fire({ title: "Atención", text: `Para partidos abiertos, indicá cuántos lugares disponibles tenés (entre 1 y ${cantidadJugadoresNum - 1}).`, icon: "warning", confirmButtonColor: "#FF6B4A" })
-        return
-      }
-    }
-
-    setIsSubmitting(true)
+  const onSubmit = async (data: PartidoFormValues) => {
     try {
       await editarPartido(partidoId, {
-        cancha_id: Number(cancha.id),
-        fecha,
-        horario,
-        tipo,
-        descripcion: descripcion || undefined,
-        cupos_disponibles: tipo === "abierto" ? Number(cuposDisponibles) : undefined
+        cancha_id: data.cancha_id,
+        fecha: data.fecha,
+        horario: data.horario,
+        tipo: data.tipo,
+        descripcion: data.descripcion || undefined,
+        cupos_disponibles: data.tipo === "abierto" ? data.cupos_disponibles : undefined
       })
 
       Swal.fire({
@@ -154,8 +168,7 @@ function EditarPartidoForm() {
       
     } catch (error) {
       console.error("Error al editar el partido:", error)
-    } finally {
-      setIsSubmitting(false)
+      Swal.fire("Error", "Ocurrió un error al guardar el partido.", "error")
     }
   }
 
@@ -191,20 +204,16 @@ function EditarPartidoForm() {
             <select
               id="canchaSelect"
               className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={cancha?.id || ""}
-              onChange={(e) => {
-                const selected = todasCanchas.find((c: any) => c.id === Number(e.target.value))
-                setCancha(selected || null)
-              }}
-              required
+              {...register("cancha_id")}
             >
-              <option value="" disabled>Elegí una cancha disponible</option>
+              <option value="">Elegí una cancha disponible</option>
               {todasCanchas
                 .filter(c => originalTamano === null || c.tamano === originalTamano)
                 .map(c => (
                   <option key={c.id} value={c.id}>{c.nombre} - {c.zona}</option>
                 ))}
             </select>
+            {errors.cancha_id && <p className="text-destructive text-sm mt-1">{errors.cancha_id.message}</p>}
           </div>
           
           {cancha && (
@@ -246,39 +255,37 @@ function EditarPartidoForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fecha" className="font-medium text-sm">Fecha *</Label>
                 <Input
                   id="fecha"
                   type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  required
+                  {...register("fecha")}
                   className="bg-input border-0 h-11"
                 />
+                {errors.fecha && <p className="text-destructive text-sm mt-1">{errors.fecha.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="horario" className="font-medium text-sm">Turno *</Label>
                 <select
                   id="horario"
-                  value={horario}
-                  onChange={(e) => setHorario(e.target.value)}
                   className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                  required
+                  {...register("horario")}
                   disabled={!cancha}
                 >
-                  <option value="" disabled>Seleccioná un turno</option>
+                  <option value="">Seleccioná un turno</option>
                   {turnosDisponibles.map((turno) => (
                     <option key={turno.inicio} value={turno.inicio} disabled={turno.estado !== "disponible"}>
                       De {turno.inicio} a {turno.fin} hs{turno.estado !== "disponible" ? " (Ocupado)" : ""}
                     </option>
                   ))}
-                  {!turnosDisponibles.some(t => t.inicio === horario) && horario && (
-                     <option value={horario}>De {horario} hs</option>
+                  {!turnosDisponibles.some(t => t.inicio === watchHorario) && watchHorario && (
+                     <option value={watchHorario}>De {watchHorario} hs</option>
                   )}
                 </select>
+                {errors.horario && <p className="text-destructive text-sm mt-1">{errors.horario.message}</p>}
               </div>
             </div>
 
@@ -307,30 +314,26 @@ function EditarPartidoForm() {
               <Label htmlFor="tipo" className="font-medium text-sm">Tipo de Partido *</Label>
               <select
                 id="tipo"
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
+                {...register("tipo")}
                 className="flex h-11 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                required
               >
                 <option value="abierto">Abierto (Cualquiera puede unirse)</option>
                 <option value="cerrado">Cerrado (Solo invitados)</option>
               </select>
+              {errors.tipo && <p className="text-destructive text-sm mt-1">{errors.tipo.message}</p>}
             </div>
 
-            {tipo === "abierto" && (
+            {watchTipo === "abierto" && (
               <div className="space-y-2">
                 <Label htmlFor="cupos" className="font-medium text-sm">Lugares Disponibles (Cupos) *</Label>
                 <Input
                   id="cupos"
                   type="number"
-                  min="1"
-                  max={cancha?.tamano ? (cancha.tamano * 2) - 1 : 1}
-                  value={cuposDisponibles}
-                  onChange={(e) => setCuposDisponibles(e.target.value)}
+                  {...register("cupos_disponibles")}
                   placeholder="Ej: 3 (si te faltan 3 jugadores)"
-                  required
                   className="bg-input border-0 h-11"
                 />
+                {errors.cupos_disponibles && <p className="text-destructive text-sm mt-1">{errors.cupos_disponibles.message}</p>}
               </div>
             )}
 
@@ -338,11 +341,11 @@ function EditarPartidoForm() {
               <Label htmlFor="descripcion" className="font-medium text-sm">Descripción (Opcional)</Label>
               <textarea
                 id="descripcion"
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
+                {...register("descripcion")}
                 className="flex min-h-[80px] w-full rounded-lg bg-input px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Aclaraciones, reglas, o cualquier info extra para los jugadores..."
               />
+              {errors.descripcion && <p className="text-destructive text-sm mt-1">{errors.descripcion.message}</p>}
             </div>
 
             <Button type="submit" className="w-full font-semibold h-11" disabled={isSubmitting || !cancha}>

@@ -42,8 +42,8 @@ export const CanchaSchema = z.object({
   dias_operativos: z.number(),
   hora_apertura: z.string(),
   hora_cierre: z.string(),
-  duracion_turno: z.number().optional(),
-  fotos: z.string().optional(),
+  duracion_turno: z.number().nullable().optional(),
+  fotos: z.string().nullable().optional(),
 });
 
 // Partido
@@ -56,7 +56,7 @@ export const PartidoSchema = z.object({
   tipo: z.string(),
   cantidad_jugadores: z.number(),
   cupos_disponibles: z.number(),
-  descripcion: z.string().optional(),
+  descripcion: z.string().nullable().optional(),
   estado: z.string(),
   cancha: z.object({
     id: z.number(),
@@ -64,8 +64,8 @@ export const PartidoSchema = z.object({
     zona: z.string(),
     direccion: z.string(),
     duracion_turno: z.number().optional(),
-  }).optional(),
-  organizador: UserProfileSchema.optional(),
+  }).nullable().optional(),
+  organizador: UserProfileSchema.nullable().optional(),
   jugadores: z.array(UserProfileSchema).optional(),
 });
 
@@ -74,20 +74,20 @@ export const TorneoSchema = z.object({
   id: z.number(),
   nombre: z.string(),
   fecha_inicio: z.string(),
-  fecha_fin: z.string(),
+  fecha_fin: z.string().optional(),
   formato: z.string(),
   zona: z.string(),
   dias_operativos: z.number(),
   franja_horaria: z.string(),
-  min_integrantes_por_equipo: z.number(),
+  min_integrantes_por_equipo: z.number().optional(),
   max_equipos: z.number(),
   costo_inscripcion: z.number(),
   ida_y_vuelta: z.boolean(),
   fase_final: z.string().nullable().optional(),
-  descripcion: z.string().optional(),
-  reglas: z.string().optional(),
+  descripcion: z.string().nullable().optional(),
+  reglas: z.string().nullable().optional(),
   estado: z.string(),
-  organizador_id: z.number(),
+  organizador_id: z.number().optional(),
   equipos_inscriptos: z.number(),
   equipos: z.array(EquipoInscriptoSchema).optional(),
   lugar: z.string(),
@@ -149,3 +149,78 @@ export const TorneoFormSchema = z.object({
 });
 
 export type TorneoFormData = z.infer<typeof TorneoFormSchema>;
+
+export const CanchaFormSchema = z.object({
+  nombre: z.string().min(1, "El nombre de la cancha es obligatorio."),
+  tipo_superficie: z.string().min(1, "El tipo de superficie es obligatorio."),
+  tamano: z.coerce.number({ invalid_type_error: "Seleccioná un tamaño válido." }).min(5, "El tamaño debe ser un número válido."),
+  iluminacion: z.boolean(),
+  zona: z.string().min(1, "La zona es obligatoria."),
+  direccion: z.string().min(1, "La dirección exacta es obligatoria."),
+  precio_por_turno: z.coerce.number({ invalid_type_error: "Debes ingresar un número válido." }).positive("El precio por turno debe ser mayor a cero."),
+  dias_operativos: z.number().min(1, "Debe seleccionar al menos un día operativo."),
+  apertura_h: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  apertura_m: z.enum(["00", "15", "30", "45"], { errorMap: () => ({ message: "Requerido" }) }),
+  cierre_h: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  cierre_m: z.enum(["00", "15", "30", "45"], { errorMap: () => ({ message: "Requerido" }) }),
+}).superRefine((data, ctx) => {
+  if (data.apertura_m !== data.cierre_m) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Los minutos de apertura y cierre deben coincidir para evitar turnos incompletos.",
+      path: ["cierre_m"]
+    });
+  }
+
+  const ah = data.apertura_h.padStart(2, "0")
+  const am = data.apertura_m
+  const ch = data.cierre_h.padStart(2, "0")
+  const cm = data.cierre_m
+  if (`${ah}:${am}` >= `${ch}:${cm}`) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La hora de cierre debe ser posterior a la de apertura.",
+      path: ["cierre_h"]
+    });
+  }
+});
+
+export type CanchaFormValues = z.infer<typeof CanchaFormSchema>;
+
+export const PartidoFormSchema = z.object({
+  cancha_id: z.coerce.number().positive("Debe seleccionar una cancha."),
+  fecha: z.string().min(1, "La fecha es obligatoria."),
+  horario: z.string().min(1, "El turno es obligatorio."),
+  tipo: z.enum(["abierto", "cerrado"]),
+  cupos_disponibles: z.coerce.number().optional(),
+  max_cupos: z.number().optional(),
+  descripcion: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const matchDate = new Date(`${data.fecha}T${data.horario}`);
+  const now = new Date();
+  if (matchDate <= now) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La fecha y hora del partido deben ser en el futuro.",
+      path: ["fecha"]
+    });
+  }
+
+  if (data.tipo === "abierto") {
+    if (data.cupos_disponibles === undefined || data.cupos_disponibles < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Indicá la cantidad de lugares disponibles.",
+        path: ["cupos_disponibles"]
+      });
+    } else if (data.max_cupos && data.cupos_disponibles > data.max_cupos) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Los cupos no pueden superar los lugares máximos disponibles (${data.max_cupos}).`,
+        path: ["cupos_disponibles"]
+      });
+    }
+  }
+});
+
+export type PartidoFormValues = z.infer<typeof PartidoFormSchema>;

@@ -668,9 +668,21 @@ export async function getTorneosDisponibles(): Promise<TorneoData[]> {
 
 export async function getMisTorneos(): Promise<TorneoData[]> {
     try {
-        return await fetchApi(`/api/torneos/mis-torneos`, { method: "GET" }, TorneoArraySchema);
+        const data = await fetchApi(`/api/torneos/mis-torneos`);
+        // The backend returns { proximos: [], en_curso: [], finalizados: [], cancelados: [] }
+        // We need to flatten it for the frontend components that expect an array
+        const allTorneos = [
+            ...(data.proximos || []),
+            ...(data.en_curso || []),
+            ...(data.finalizados || []),
+            ...(data.cancelados || [])
+        ].map((t: any) => ({
+            ...t,
+            rol_usuario: t.rol
+        }));
+        return TorneoArraySchema.parse(allTorneos);
       } catch (error) {
-        throw new Error(getErrorMessage(error) || "Error al cargar mis torneos");
+        throw new Error(getErrorMessage(error) || "Error al cargar los torneos del usuario");
       }
 }
 
