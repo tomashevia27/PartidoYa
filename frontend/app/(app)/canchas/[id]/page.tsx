@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
 import { eliminarCancha, API_URL } from "@/hooks/use-api"
 import Swal from 'sweetalert2'
+import { getErrorMessage } from "@/lib/api-client"
 
 interface Cancha {
     id: number
@@ -93,10 +94,10 @@ export default function CanchaDetallePage() {
                     "success"
                 )
                 router.push("/profile")
-            } catch (error: any) {
+            } catch (error) {
                 Swal.fire({
                     title: "No se puede eliminar",
-                    text: error.message || "Existen compromisos pendientes o ocurrió un error.",
+                    text: getErrorMessage(error) || "Existen compromisos pendientes o ocurrió un error.",
                     icon: "error",
                     confirmButtonColor: "#FF6B4A",
                 })

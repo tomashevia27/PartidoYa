@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api-client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
@@ -102,8 +103,8 @@ export function usePartidoDetalle(partidoId: string) {
         })
         const updated = await getPartido(partidoId)
         setPartido(updated)
-      } catch (error: any) {
-        Swal.fire("Error", error.message || "No se pudo cancelar el partido", "error")
+      } catch (error) {
+        Swal.fire("Error", getErrorMessage(error) || "No se pudo cancelar el partido", "error")
       } finally {
         setIsCancelling(false)
       }
@@ -146,8 +147,8 @@ export function usePartidoDetalle(partidoId: string) {
 
         const updated = await getPartido(partidoId)
         setPartido(updated)
-      } catch (error: any) {
-        Swal.fire("Error", error.message || "No se pudo completar la inscripción", "error")
+      } catch (error) {
+        Swal.fire("Error", getErrorMessage(error) || "No se pudo completar la inscripción", "error")
       } finally {
         setIsJoining(false)
       }
@@ -186,8 +187,8 @@ export function usePartidoDetalle(partidoId: string) {
         })
         const updated = await getPartido(partidoId)
         setPartido(updated)
-      } catch (error: any) {
-        Swal.fire("Error", error.message || "No se pudo completar la baja", "error")
+      } catch (error) {
+        Swal.fire("Error", getErrorMessage(error) || "No se pudo completar la baja", "error")
       } finally {
         setIsLeaving(false)
       }

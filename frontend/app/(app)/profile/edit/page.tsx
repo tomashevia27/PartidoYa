@@ -1,4 +1,5 @@
 "use client"
+import { getErrorMessage } from "@/lib/api-client"
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
@@ -159,7 +160,7 @@ export default function EditProfilePage() {
     } catch (error) {
       Swal.fire({
         title: "No se pudo actualizar",
-        text: error instanceof Error ? error.message : "Error de conexión al actualizar el perfil.",
+        text: error instanceof Error ? getErrorMessage(error) : "Error de conexión al actualizar el perfil.",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

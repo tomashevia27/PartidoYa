@@ -17,6 +17,7 @@ import {
 import { registerUser, uploadImageToCloudinary } from "@/hooks/use-api"
 import Swal from 'sweetalert2'
 import { Camera, Trophy, Users } from "lucide-react"
+import { getErrorMessage } from "@/lib/api-client"
 
 function SportsIcon({ className }: { className?: string }) {
   return (
@@ -104,7 +105,7 @@ export default function RegisterPage() {
     } catch (error) {
       Swal.fire({
         title: "No se pudo registrar",
-        text: error instanceof Error ? error.message : "No se pudo conectar con el servidor.",
+        text: error instanceof Error ? getErrorMessage(error) : "No se pudo conectar con el servidor.",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

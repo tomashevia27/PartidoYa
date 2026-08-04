@@ -80,7 +80,7 @@ export function usePlayerDashboard() {
 
       const data = await getPartidosDisponibles(filters)
       setPartidos(data)
-    } catch (err: any) {
+    } catch (err) {
       console.warn("Error al cargar partidos:", err)
       setPartidos([])
     } finally {

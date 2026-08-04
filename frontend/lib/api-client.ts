@@ -24,6 +24,18 @@ export class ApiError extends Error {
   }
 }
 
+export function getErrorMessage(error: unknown): string {
+  let msg = "";
+  if (error instanceof ApiError) msg = error.message;
+  else if (error instanceof Error) msg = error.message;
+  else msg = String(error);
+
+  if (msg === "fetch failed" || msg === "Failed to fetch") {
+    return "No se pudo conectar con el servidor. Revisá tu conexión a internet.";
+  }
+  return msg;
+}
+
 export async function fetchApi<T>(
   endpoint: string, 
   options: RequestInit = {}, 
@@ -63,6 +75,14 @@ export async function fetchApi<T>(
 
   // 6. Manejo estructurado de errores (4xx y 5xx)
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      sessionStorage.removeItem("partidoya_auth_user_id");
+      sessionStorage.removeItem("partidoya_auth_user_role");
+      sessionStorage.removeItem("partidoya_auth_access_token");
+      window.location.href = "/login?expired=true";
+      await new Promise(() => {}); // Detener ejecución mientras el navegador redirige
+    }
+
     let errorMessage = "Error inesperado en la petición";
     
     if (data && typeof data === "object") {
@@ -86,7 +106,7 @@ export async function fetchApi<T>(
   if (schema) {
     try {
       return schema.parse(data);
-    } catch (error: any) {
+    } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("Zod Validation Error:", error.errors);
         throw new ApiError("Error de validación: La respuesta del servidor no tiene el formato esperado.", 500, error.errors);

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
@@ -13,6 +13,7 @@ import { Loader2, Mail, Lock, Trophy } from "lucide-react"
 
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
+import { getErrorMessage } from "@/lib/api-client"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -20,6 +21,22 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      if (urlParams.get("expired") === "true") {
+        Swal.fire({
+          title: "Sesión expirada",
+          text: "Tu sesión caducó. Por favor, ingresá nuevamente para continuar.",
+          icon: "info",
+          confirmButtonColor: "#FF6B4A"
+        })
+        // Remove param from URL without refreshing
+        window.history.replaceState({}, '', '/login')
+      }
+    }
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -52,7 +69,7 @@ export default function LoginPage() {
       router.push("/home")
 
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "No se pudo conectar con el servidor."
+      const errorMsg = error instanceof Error ? getErrorMessage(error) : "No se pudo conectar con el servidor."
       
       if (errorMsg === "La cuenta no está activa aún") {
         Swal.fire({

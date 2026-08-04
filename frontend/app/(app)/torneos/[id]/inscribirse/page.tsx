@@ -7,6 +7,7 @@ import { Trophy, ArrowLeft, Loader2, AlertCircle, Users, Shield, Image as ImageI
 import { Button } from "@/components/ui/button"
 import { getTorneo, inscribirEquipo, TorneoData } from "@/hooks/use-api"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/api-client"
 
 interface Jugador {
     nombre: string;
@@ -38,8 +39,8 @@ export default function InscripcionTorneoPage() {
                 } else if (data.equipos_inscriptos >= data.max_equipos) {
                     setErrorMsg("Este torneo ya completó su cupo máximo de equipos.")
                 }
-            } catch (err: any) {
-                setErrorMsg(err.message || "Torneo no encontrado")
+            } catch (err) {
+                setErrorMsg(getErrorMessage(err) || "Torneo no encontrado")
             } finally {
                 setIsLoading(false)
             }
@@ -147,8 +148,8 @@ export default function InscripcionTorneoPage() {
             })
 
             router.push(`/torneos/${torneo.id}`)
-        } catch (error: any) {
-            Swal.fire("Error", error.message || "Error al inscribir el equipo.", "error")
+        } catch (error) {
+            Swal.fire("Error", getErrorMessage(error) || "Error al inscribir el equipo.", "error")
             setIsSubmitting(false)
         }
     }

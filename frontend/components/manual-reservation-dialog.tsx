@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { crearReservaManual, type AgendaSlot } from "@/hooks/use-api"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/api-client"
 
 interface ManualReservationDialogProps {
   open: boolean
@@ -61,10 +62,10 @@ export function ManualReservationDialog({
 
       onOpenChange(false)
       onSuccess()
-    } catch (error: any) {
+    } catch (error) {
       Swal.fire({
         title: "Error",
-        text: error.message || "No se pudo cargar la reserva",
+        text: getErrorMessage(error) || "No se pudo cargar la reserva",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

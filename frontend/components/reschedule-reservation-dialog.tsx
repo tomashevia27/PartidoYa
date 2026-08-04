@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Clock, Calendar } from "lucide-react"
 import { reprogramarReserva, getTurnos, type TurnoSlot } from "@/hooks/use-api"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/api-client"
 
 interface RescheduleReservationDialogProps {
   open: boolean
@@ -122,10 +123,10 @@ export function RescheduleReservationDialog({
 
       onOpenChange(false)
       onSuccess()
-    } catch (error: any) {
+    } catch (error) {
       Swal.fire({
         title: "Error",
-        text: error.message || "No se pudo reprogramar la reserva",
+        text: getErrorMessage(error) || "No se pudo reprogramar la reserva",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

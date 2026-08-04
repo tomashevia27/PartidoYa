@@ -12,6 +12,7 @@ import { FixtureTab } from "@/components/torneos/FixtureTab"
 import { EstadisticasTab } from "@/components/torneos/EstadisticasTab"
 import { TablaTab } from "@/components/torneos/TablaTab"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/api-client"
 
 const DIAS_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
@@ -39,8 +40,8 @@ export default function TorneoDetallePage() {
             try {
                 const data = await getTorneo(Number(id))
                 setTorneo(data)
-            } catch (err: any) {
-                setError(err.message || "Torneo no encontrado")
+            } catch (err) {
+                setError(getErrorMessage(err) || "Torneo no encontrado")
             } finally {
                 setIsLoading(false)
             }
@@ -188,8 +189,8 @@ export default function TorneoDetallePage() {
                     timer: 2500,
                     showConfirmButton: false
                 })
-            } catch (err: any) {
-                Swal.fire("Error", err.message || "No se pudo cancelar el torneo", "error")
+            } catch (err) {
+                Swal.fire("Error", getErrorMessage(err) || "No se pudo cancelar el torneo", "error")
             } finally {
                 setIsCancelling(false)
             }
@@ -220,8 +221,8 @@ export default function TorneoDetallePage() {
                 })
                 const data = await getTorneo(Number(id))
                 setTorneo(data)
-            } catch (err: any) {
-                Swal.fire("Error", err.message || "No se pudo dar de baja al equipo", "error")
+            } catch (err) {
+                Swal.fire("Error", getErrorMessage(err) || "No se pudo dar de baja al equipo", "error")
             } finally {
                 setIsLeaving(false)
             }

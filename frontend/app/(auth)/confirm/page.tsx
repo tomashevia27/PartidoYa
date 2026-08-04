@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { confirmEmail, resendCode } from "@/hooks/use-api" // Ajusté el path para que sea consistente con tus otros archivos
+import { getErrorMessage } from "@/lib/api-client"
 
 export default function ConfirmPage() {
   const searchParams = useSearchParams()
@@ -34,8 +35,8 @@ export default function ConfirmPage() {
       setMessage(res.mensaje)
       // Redirigir al login después de confirmar con un pequeño delay para mostrar éxito
       setTimeout(() => router.push('/login'), 1500)
-    } catch (err: any) {
-      setError(err.message || "Error al confirmar el código")
+    } catch (err) {
+      setError(getErrorMessage(err) || "Error al confirmar el código")
     } finally {
       setLoading(false)
     }
@@ -49,8 +50,8 @@ export default function ConfirmPage() {
     try {
       const res = await resendCode(email)
       setMessage(res.mensaje || "Código reenviado con éxito")
-    } catch (err: any) {
-      setError(err.message || "Error al reenviar código")
+    } catch (err) {
+      setError(getErrorMessage(err) || "Error al reenviar código")
     } finally {
       setLoading(false)
     }

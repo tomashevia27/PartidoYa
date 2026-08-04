@@ -1,4 +1,5 @@
 "use client"
+import { getErrorMessage } from "@/lib/api-client"
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
@@ -96,9 +97,9 @@ export default function PartidosDisponiblesPage() {
 
       const data = await getPartidosDisponibles(filters)
       setPartidos(data)
-    } catch (err: any) {
+    } catch (err) {
       console.warn("Error al cargar partidos:", err)
-      setError(err.message || "No se pudieron cargar los partidos")
+      setError(getErrorMessage(err) || "No se pudieron cargar los partidos")
       setPartidos([])
     } finally {
       setIsLoading(false)

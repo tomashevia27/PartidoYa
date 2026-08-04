@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Swal from "sweetalert2"
 import { Loader2, AlertCircle } from "lucide-react"
+import { getErrorMessage } from "@/lib/api-client"
 
 interface Props {
   partido: PartidoTorneoData | null
@@ -110,8 +111,8 @@ export function CargarResultadoModal({ partido, isOpen, onClose, onSuccess }: Pr
       })
       onSuccess()
       onClose()
-    } catch (err: any) {
-      setErrorMsg(err.message || "No se pudo guardar el resultado. Intentá nuevamente.")
+    } catch (err) {
+      setErrorMsg(getErrorMessage(err) || "No se pudo guardar el resultado. Intentá nuevamente.")
     } finally {
       setIsSubmitting(false)
     }

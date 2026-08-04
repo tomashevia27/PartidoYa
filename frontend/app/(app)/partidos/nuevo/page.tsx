@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
 import { crearPartido, getTurnos, API_URL } from "@/hooks/use-api"
+import { getErrorMessage } from "@/lib/api-client"
 
 function NuevoPartidoForm() {
   const router = useRouter()
@@ -164,8 +165,9 @@ function NuevoPartidoForm() {
         router.push("/profile")
       })
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al crear el partido:", error)
+      Swal.fire("Error", getErrorMessage(error) || "Error al crear el partido", "error")
     } finally {
       setIsSubmitting(false)
     }

@@ -152,7 +152,7 @@ function EditarPartidoForm() {
         router.push(`/partidos/${partidoId}`)
       })
       
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error al editar el partido:", error)
     } finally {
       setIsSubmitting(false)

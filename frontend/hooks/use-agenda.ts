@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@/lib/api-client"
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import {
@@ -102,10 +103,10 @@ export function useAgenda() {
         showConfirmButton: false,
       })
       recargarAgenda()
-    } catch (error: any) {
+    } catch (error) {
       Swal.fire({
         title: "Error",
-        text: error.message || "No se pudo bloquear el turno",
+        text: getErrorMessage(error) || "No se pudo bloquear el turno",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })
@@ -134,10 +135,10 @@ export function useAgenda() {
         showConfirmButton: false,
       })
       recargarAgenda()
-    } catch (error: any) {
+    } catch (error) {
       Swal.fire({
         title: "Error",
-        text: error.message || "No se pudo desbloquear el turno",
+        text: getErrorMessage(error) || "No se pudo desbloquear el turno",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })
@@ -166,10 +167,10 @@ export function useAgenda() {
         showConfirmButton: false,
       })
       recargarAgenda()
-    } catch (error: any) {
+    } catch (error) {
       Swal.fire({
         title: "Error",
-        text: error.message || "No se pudo cancelar la reserva",
+        text: getErrorMessage(error) || "No se pudo cancelar la reserva",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

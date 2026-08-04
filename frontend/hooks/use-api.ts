@@ -1,8 +1,9 @@
 "use client"
 
-import { fetchApi, API_URL, getAccessToken } from "@/lib/api-client";
+import { fetchApi, API_URL, getAccessToken, ApiError } from "@/lib/api-client";
 import { CanchaArraySchema, PartidoArraySchema, TorneoArraySchema, TorneoSchema, CanchaSchema, PartidoSchema, MisPartidosSchema } from "@/lib/schemas";
 import { z } from "zod";
+import { getErrorMessage } from "@/lib/api-client"
 export { API_URL, getAccessToken }
 export type CanchaData = z.infer<typeof CanchaSchema>;
 export type PartidoData = z.infer<typeof PartidoSchema>;
@@ -57,11 +58,11 @@ export async function loginUser(
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
-  } catch (error: any) {
-    if (error.data?.detail && Array.isArray(error.data.detail)) {
+  } catch (error) {
+    if ((error as ApiError).data?.detail && Array.isArray((error as ApiError).data?.detail)) {
       throw new Error("Por favor, ingresá un formato de email válido.")
     }
-    throw new Error(error.message || "Error al iniciar sesión");
+    throw new Error(getErrorMessage(error) || "Error al iniciar sesión");
   }
 }
 
@@ -71,9 +72,9 @@ export async function registerUser(userData: UserData): Promise<UserProfile> {
       method: "POST",
       body: JSON.stringify(userData),
     });
-  } catch (error: any) {
-    if (error.data?.detail && Array.isArray(error.data.detail)) {
-      const messages = error.data.detail.map((err: { loc: string[] }) => {
+  } catch (error) {
+    if ((error as ApiError).data?.detail && Array.isArray((error as ApiError).data?.detail)) {
+      const messages = (error as ApiError).data?.detail.map((err: { loc: string[] }) => {
         const campo = err.loc[err.loc.length - 1]
         switch (campo) {
           case "nombre": return "• El nombre no puede estar vacío."
@@ -89,15 +90,15 @@ export async function registerUser(userData: UserData): Promise<UserProfile> {
       })
       throw new Error("Revisá los datos ingresados:\n" + messages.join("\n"))
     }
-    throw new Error(error.message || "Error al registrarse");
+    throw new Error(getErrorMessage(error) || "Error al registrarse");
   }
 }
 
 export async function getUserProfile(): Promise<UserProfile> {
     try {
         return await fetchApi(`/usuarios/me`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar el perfil");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar el perfil");
       }
 }
 
@@ -108,8 +109,8 @@ export async function confirmEmail(email: string, code: string): Promise<{ mensa
         method: "POST",
         body: JSON.stringify({ email, code }),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al confirmar email");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al confirmar email");
       }
 }
 
@@ -119,8 +120,8 @@ export async function resendCode(email: string): Promise<{ mensaje: string }> {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al reenviar código");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al reenviar código");
       }
 }
 
@@ -132,8 +133,8 @@ export async function updateUserProfile(
         method: "PUT",
         body: JSON.stringify(userData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al actualizar el perfil");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al actualizar el perfil");
       }
 }
 
@@ -145,8 +146,8 @@ export async function crearCancha(canchaData: Omit<CanchaData, "id">) {
         method: "POST",
         body: JSON.stringify(canchaData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -156,8 +157,8 @@ export async function actualizarCancha(canchaId: number | string, canchaData: Pa
         method: "PUT",
         body: JSON.stringify(canchaData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -166,8 +167,8 @@ export async function eliminarCancha(canchaId: number | string) {
         return await fetchApi(`/canchas/${canchaId}`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al eliminar la cancha");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al eliminar la cancha");
       }
 }
 
@@ -185,40 +186,40 @@ export interface PartidoCreateData {
 export async function getMisPartidos(): Promise<import("@/lib/schemas").MisPartidosData> {
     try {
         return await fetchApi(`/partidos/mis-partidos`, {}, MisPartidosSchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar partidos");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar partidos");
       }
 }
 
 export async function getMisCanchas(): Promise<CanchaData[]> {
     try {
         return await fetchApi(`/canchas/me`, {}, CanchaArraySchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar mis canchas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar mis canchas");
       }
 }
 
 export async function getCanchas(): Promise<CanchaData[]> {
     try {
         return await fetchApi(`/canchas`, {}, CanchaArraySchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar las canchas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar las canchas");
       }
 }
 
 export async function getCancha(canchaId: string | number): Promise<CanchaData> {
     try {
         return await fetchApi(`/canchas/${canchaId}`, {}, CanchaSchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar la cancha");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar la cancha");
       }
 }
 
 export async function getPartido(partidoId: string | number): Promise<PartidoData> {
     try {
         return await fetchApi(`/partidos/${partidoId}`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar el partido");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar el partido");
       }
 }
 
@@ -228,8 +229,8 @@ export async function crearPartido(partidoData: PartidoCreateData): Promise<Part
         method: "POST",
         body: JSON.stringify(partidoData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -238,8 +239,8 @@ export async function cancelarPartido(partidoId: string | number): Promise<Parti
         return await fetchApi(`/partidos/${partidoId}/cancelar`, {
         method: "PATCH"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cancelar el partido");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cancelar el partido");
       }
 }
 
@@ -250,8 +251,8 @@ export async function inscribirseAPartido(
         return await fetchApi(`/partidos/${partidoId}/inscribirse`, {
         method: "POST"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al inscribirse al partido");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al inscribirse al partido");
       }
 }
 
@@ -260,8 +261,8 @@ export async function bajarseDePartido(partidoId: string | number): Promise<Part
         return await fetchApi(`/partidos/${partidoId}/bajarse`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al darse de baja del partido");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al darse de baja del partido");
       }
 }
 
@@ -271,8 +272,8 @@ export async function editarPartido(partidoId: string | number, partidoData: Par
         method: "PUT",
         body: JSON.stringify(partidoData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -297,8 +298,8 @@ export async function getPartidosDisponibles(filters?: PartidoDisponibleFilters)
 
   try {
     return await fetchApi(endpoint);
-  } catch (error: any) {
-    throw new Error(error.message || "Error al cargar partidos disponibles");
+  } catch (error) {
+    throw new Error(getErrorMessage(error) || "Error al cargar partidos disponibles");
   }
 }
 
@@ -315,8 +316,8 @@ export interface FiltrosDisponiblesData {
 export async function getFiltrosDisponibles(): Promise<FiltrosDisponiblesData> {
     try {
         return await fetchApi(`/partidos/filtros`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar opciones de filtros");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar opciones de filtros");
       }
 }
 
@@ -355,16 +356,16 @@ export async function getNotificaciones(
   const queryString = params.toString()
   try {
     return await fetchApi(`/notificaciones?${queryString}`);
-  } catch (error: any) {
-    throw new Error(error.message || "Error al cargar notificaciones");
+  } catch (error) {
+    throw new Error(getErrorMessage(error) || "Error al cargar notificaciones");
   }
 }
 
 export async function getConteoNoLeidas(): Promise<ConteoNoLeidas> {
     try {
         return await fetchApi(`/notificaciones/no-leidas/count`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al obtener conteo de notificaciones");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al obtener conteo de notificaciones");
       }
 }
 
@@ -373,8 +374,8 @@ export async function marcarNotificacionLeida(notificacionId: number): Promise<N
         return await fetchApi(`/notificaciones/${notificacionId}/leer`, {
         method: "PATCH"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al marcar notificación como leída");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al marcar notificación como leída");
       }
 }
 
@@ -383,8 +384,8 @@ export async function marcarTodasLeidas(): Promise<{ mensaje: string }> {
         return await fetchApi(`/notificaciones/leer-todas`, {
         method: "PATCH"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al marcar notificaciones como leídas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al marcar notificaciones como leídas");
       }
 }
 
@@ -393,8 +394,8 @@ export async function eliminarNotificacion(notificacionId: number): Promise<{ me
         return await fetchApi(`/notificaciones/${notificacionId}`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al eliminar notificación");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al eliminar notificación");
       }
 }
 
@@ -403,8 +404,8 @@ export async function eliminarTodasNotificaciones(): Promise<{ mensaje: string }
         return await fetchApi(`/notificaciones`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al eliminar notificaciones");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al eliminar notificaciones");
       }
 }
 
@@ -448,16 +449,16 @@ export async function getTurnos(canchaId: number | string, fecha: string, exclui
   }
   try {
     return await fetchApi(url);
-  } catch (error: any) {
-    throw new Error(error.message || "Error al cargar los turnos");
+  } catch (error) {
+    throw new Error(getErrorMessage(error) || "Error al cargar los turnos");
   }
 }
 
 export async function getAgenda(canchaId: number | string, fecha: string): Promise<AgendaData> {
     try {
         return await fetchApi(`/canchas/${canchaId}/agenda?fecha=${fecha}`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar la agenda");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar la agenda");
       }
 }
 
@@ -476,8 +477,8 @@ export async function crearReservaManual(reservaData: ReservaManualData): Promis
         method: "POST",
         body: JSON.stringify(reservaData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -487,8 +488,8 @@ export async function bloquearTurno(data: ReservaManualData): Promise<PartidoDat
         method: "POST",
         body: JSON.stringify(data),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -497,8 +498,8 @@ export async function desbloquearTurno(partidoId: number): Promise<{ mensaje: st
         return await fetchApi(`/reservas/bloquear/${partidoId}`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al desbloquear el turno");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al desbloquear el turno");
       }
 }
 
@@ -507,8 +508,8 @@ export async function cancelarReservaDueno(partidoId: number): Promise<PartidoDa
         return await fetchApi(`/reservas/${partidoId}`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cancelar la reserva");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cancelar la reserva");
       }
 }
 
@@ -527,8 +528,8 @@ export async function reprogramarReserva(
         method: "PUT",
         body: JSON.stringify(data),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Revisá los datos ingresados.");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Revisá los datos ingresados.");
       }
 }
 
@@ -578,8 +579,8 @@ export async function editarTorneo(torneoId: string | number, torneoData: Torneo
         method: "PATCH",
         body: JSON.stringify(torneoData),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al editar el torneo");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al editar el torneo");
       }
 }
 
@@ -652,32 +653,32 @@ export async function crearTorneo(data: TorneoCreateData): Promise<TorneoData> {
         method: "POST",
         body: JSON.stringify(data),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al crear el torneo");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al crear el torneo");
       }
 }
 
 export async function getTorneosDisponibles(): Promise<TorneoData[]> {
     try {
         return await fetchApi(`/api/torneos/`, { method: "GET" }, TorneoArraySchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar torneos abiertos");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar torneos abiertos");
       }
 }
 
 export async function getMisTorneos(): Promise<TorneoData[]> {
     try {
         return await fetchApi(`/api/torneos/mis-torneos`, { method: "GET" }, TorneoArraySchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar mis torneos");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar mis torneos");
       }
 }
 
 export async function getTorneo(id: number): Promise<TorneoData> {
     try {
         return await fetchApi(`/api/torneos/${id}`, { method: "GET" }, TorneoSchema);
-      } catch (error: any) {
-        throw new Error(error.message || "Torneo no encontrado");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Torneo no encontrado");
       }
 }
 
@@ -694,11 +695,11 @@ export async function inscribirEquipo(torneoId: number, data: InscripcionData): 
         escudo: data.escudo || ""
       }),
     });
-  } catch (error: any) {
-    if (error.data?.detail && Array.isArray(error.data.detail)) {
+  } catch (error) {
+    if ((error as ApiError).data?.detail && Array.isArray((error as ApiError).data?.detail)) {
       throw new Error("Revisá los datos cargados en la plantilla del equipo.")
     }
-    throw new Error(error.message || "Error al inscribir el equipo.");
+    throw new Error(getErrorMessage(error) || "Error al inscribir el equipo.");
   }
 }
 
@@ -707,8 +708,8 @@ export async function cancelarTorneo(torneoId: number): Promise<TorneoData> {
         return await fetchApi(`/api/torneos/${torneoId}/cancelar`, {
         method: "POST"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cancelar el torneo");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cancelar el torneo");
       }
 }
 
@@ -717,8 +718,8 @@ export async function bajarseDeTorneo(torneoId: number): Promise<TorneoData> {
         return await fetchApi(`/api/torneos/${torneoId}/inscripciones`, {
         method: "DELETE"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al darse de baja del torneo");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al darse de baja del torneo");
       }
 }
 
@@ -792,16 +793,16 @@ export interface BracketResponse {
 export async function getFixturePorFechas(torneoId: number): Promise<FixtureResponse> {
     try {
         return await fetchApi(`/api/torneos/${torneoId}/fixture`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar fixture por fechas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar fixture por fechas");
       }
 }
 
 export async function getBracketTorneo(torneoId: number): Promise<BracketResponse> {
     try {
         return await fetchApi(`/api/torneos/${torneoId}/bracket`);
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar bracket");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar bracket");
       }
 }
 
@@ -869,8 +870,8 @@ export async function generarFixture(torneoId: number): Promise<PartidoTorneoDat
         return await fetchApi(`/api/torneos/${torneoId}/fixture`, {
         method: "POST"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al generar fixture");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al generar fixture");
       }
 }
 
@@ -879,8 +880,8 @@ export async function getFixtureTorneo(torneoId: number): Promise<PartidoTorneoD
         return await fetchApi(`/api/torneos/${torneoId}/partidos`, {
         method: "GET"
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar fixture");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar fixture");
       }
 }
 
@@ -890,8 +891,8 @@ export async function cargarResultadoPartido(partidoId: number, payload: CargarR
         method: "POST",
         body: JSON.stringify(payload)
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error de validación");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error de validación");
       }
 }
 
@@ -900,8 +901,8 @@ export async function getEstadisticasTorneo(torneoId: number): Promise<Estadisti
         return await fetchApi(`/api/torneos/${torneoId}/estadisticas`, {
         method: "GET",
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar estadísticas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar estadísticas");
       }
 }
 
@@ -910,8 +911,8 @@ export async function getTopJugadores(torneoId: number, tipo: "goleadores" | "am
         return await fetchApi(`/api/torneos/${torneoId}/top/${tipo}?limit=${limit}`, {
         method: "GET",
       });
-      } catch (error: any) {
-        throw new Error(error.message || `Error al cargar top de ${tipo}`);
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || `Error al cargar top de ${tipo}`);
       }
 }
 
@@ -920,8 +921,8 @@ export async function getTablaPosiciones(torneoId: number): Promise<TablaPosicio
         return await fetchApi(`/api/torneos/${torneoId}/tabla-posiciones`, {
         method: "GET",
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar tabla de posiciones");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar tabla de posiciones");
       }
 }
 
@@ -936,8 +937,8 @@ export async function getVallasInvictas(torneoId: number, limit: number = 10): P
         return await fetchApi(`/api/torneos/${torneoId}/top/vallas-invictas?limit=${limit}`, {
         method: "GET",
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error al cargar vallas invictas");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error al cargar vallas invictas");
       }
 }
 
@@ -953,8 +954,8 @@ export async function programarPartido(partidoId: number, payload: ProgramarPart
         method: "PUT",
         body: JSON.stringify(payload),
       });
-      } catch (error: any) {
-        throw new Error(error.message || "Error de validación");
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || "Error de validación");
       }
 }
 
@@ -1301,8 +1302,8 @@ function buildEstadisticaParams(
 async function fetchEstadistica<T>(endpoint: string, params: string): Promise<T> {
     try {
         return await fetchApi(`/estadisticas/${endpoint}${params}`);
-      } catch (error: any) {
-        throw new Error(error.message || `Error al cargar ${endpoint}`);
+      } catch (error) {
+        throw new Error(getErrorMessage(error) || `Error al cargar ${endpoint}`);
       }
 }
 

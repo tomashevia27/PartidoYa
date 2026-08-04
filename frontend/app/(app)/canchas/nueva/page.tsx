@@ -18,6 +18,7 @@ import {
 import { useAuthContext } from "@/components/auth-provider"
 import { crearCancha, uploadImageToCloudinary } from "@/hooks/use-api"
 import Swal from 'sweetalert2'
+import { getErrorMessage } from "@/lib/api-client"
 
 export default function NuevaCanchaPage() {
   const router = useRouter()
@@ -154,7 +155,7 @@ export default function NuevaCanchaPage() {
     } catch (error) {
       Swal.fire({
         title: "No se pudo crear",
-        text: error instanceof Error ? error.message : "Error al procesar la solicitud.",
+        text: error instanceof Error ? getErrorMessage(error) : "Error al procesar la solicitud.",
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })

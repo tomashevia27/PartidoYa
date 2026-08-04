@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { CargarResultadoModal } from "./CargarResultadoModal"
 import { ProgramarPartidoModal } from "./ProgramarPartidoModal"
-import { Loader2, Calendar, Trophy, Clock, GitFork } from "lucide-react"
+import { Loader2, Calendar, Trophy, Clock, GitFork, MapPin, Search, PlayCircle, PlusCircle, CheckCircle, Target, Users, Map } from "lucide-react"
+import { getErrorMessage } from "@/lib/api-client"
 import Swal from "sweetalert2"
 
 interface Props {
@@ -512,8 +513,8 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
       const data = await generarFixture(torneo.id)
       setPartidos(data)
       Swal.fire("¡Fixture generado!", "Los partidos fueron creados correctamente.", "success")
-    } catch (e: any) {
-      Swal.fire("Error", e.message || "No se pudo generar el fixture", "error")
+    } catch (error) {
+      Swal.fire("Error", getErrorMessage(error) || "No se pudo generar el fixture", "error")
     } finally {
       setIsGenerating(false)
     }

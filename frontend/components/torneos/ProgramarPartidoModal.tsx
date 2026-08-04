@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import Swal from "sweetalert2"
 import { Loader2, MapPin, Clock, Calendar, AlertCircle } from "lucide-react"
+import { getErrorMessage } from "@/lib/api-client"
 
 interface Props {
   partido: PartidoTorneoData | null
@@ -92,8 +93,8 @@ export function ProgramarPartidoModal({ partido, torneo, isOpen, onClose, onSucc
       })
       onSuccess()
       onClose()
-    } catch (err: any) {
-      setErrorMsg(err.message || "No se pudo programar el partido. Intentá nuevamente.")
+    } catch (err) {
+      setErrorMsg(getErrorMessage(err) || "No se pudo programar el partido. Intentá nuevamente.")
     } finally {
       setIsSubmitting(false)
     }

@@ -65,11 +65,9 @@ def crear_partido(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+
     """Crea un nuevo partido."""
     return partido_service.crear_partido(db, current_user.id, datos)
-
-
-
 
 @router.get("/{partido_id}", response_model=PartidoRespuesta)
 def obtener_detalle_partido(partido_id: int, db: Session = Depends(get_db)):

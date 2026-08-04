@@ -105,3 +105,47 @@ export const MisPartidosSchema = z.object({
   inscritos: z.array(PartidoSchema),
 });
 export type MisPartidosData = z.infer<typeof MisPartidosSchema>;
+
+export const TorneoFormSchema = z.object({
+  nombre: z.string().min(1, "El nombre del torneo es obligatorio."),
+  fecha_inicio: z.string().min(1, "La fecha de inicio es obligatoria."),
+  fecha_fin: z.string().min(1, "La fecha de fin es obligatoria."),
+  formato: z.enum(["eliminacion_directa", "fase_grupos", "todos_contra_todos"]),
+  zona: z.string().min(1, "La zona es obligatoria."),
+  dias_operativos: z.number().min(1, "Debe seleccionar al menos un día operativo."),
+  apertura_h: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  apertura_m: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  cierre_h: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  cierre_m: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
+  max_equipos: z.number().min(2, "Mínimo 2 equipos"),
+  min_integrantes_por_equipo: z.number().min(5, "Mínimo 5 jugadores"),
+  ida_y_vuelta: z.boolean(),
+  fase_final: z.string().optional(),
+  costo_inscripcion: z.number().min(0, "El costo no puede ser negativo."),
+  descripcion: z.string().optional(),
+  reglas: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const inicio = new Date(data.fecha_inicio + "T00:00:00")
+  const fin = new Date(data.fecha_fin + "T00:00:00")
+  if (fin <= inicio) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "La fecha de fin debe ser posterior a la fecha de inicio.",
+      path: ["fecha_fin"]
+    });
+  }
+
+  const ah = data.apertura_h.padStart(2, "0")
+  const am = data.apertura_m.padStart(2, "0")
+  const ch = data.cierre_h.padStart(2, "0")
+  const cm = data.cierre_m.padStart(2, "0")
+  if (`${ah}:${am}` >= `${ch}:${cm}`) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El horario de cierre debe ser posterior al de apertura.",
+      path: ["cierre_h"]
+    });
+  }
+});
+
+export type TorneoFormData = z.infer<typeof TorneoFormSchema>;

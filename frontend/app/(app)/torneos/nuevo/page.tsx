@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { TorneoFormSchema, type TorneoFormData } from "@/lib/schemas"
 import {
     Trophy, Calendar, MapPin, Users, DollarSign,
     AlignLeft, Info, AlertCircle, ArrowLeft,
@@ -11,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { crearTorneo } from "@/hooks/use-api"
 import Link from "next/link"
 import Swal from "sweetalert2"
+import { getErrorMessage } from "@/lib/api-client"
 
 // ─── Constantes de opciones por formato ───────────────────────────────────────
 const ED_OPCIONES = [2, 4, 8, 16, 32, 64]
@@ -32,117 +36,81 @@ const DIAS = [
 export default function CrearTorneoPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
-    const [errorMsg, setErrorMsg] = useState("")
+    const [apiError, setApiError] = useState("")
 
-    const [formData, setFormData] = useState({
-        nombre: "",
-        fecha_inicio: "",
-        fecha_fin: "",
-        formato: "eliminacion_directa",
-        zona: "",
-        // Días y horario (igual que canchas/nueva)
-        dias_operativos: 31,   // Lun-Vie por defecto
-        apertura_h: "",
-        apertura_m: "00",
-        cierre_h: "",
-        cierre_m: "00",
-        // Equipos
-        max_equipos: 8,
-        min_integrantes_por_equipo: 5,
-        // Todos contra todos
-        ida_y_vuelta: false,
-        // Fase de grupos
-        fase_final: "cuartos",
-        // General
-        costo_inscripcion: 0,
-        descripcion: "",
-        reglas: "",
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors }
+    } = useForm<TorneoFormData>({
+        resolver: zodResolver(TorneoFormSchema),
+        defaultValues: {
+            nombre: "",
+            fecha_inicio: "",
+            fecha_fin: "",
+            formato: "eliminacion_directa",
+            zona: "",
+            dias_operativos: 31,
+            apertura_h: "",
+            apertura_m: "00",
+            cierre_h: "",
+            cierre_m: "00",
+            max_equipos: 8,
+            min_integrantes_por_equipo: 5,
+            ida_y_vuelta: false,
+            fase_final: "cuartos",
+            costo_inscripcion: 0,
+            descripcion: "",
+            reglas: "",
+        }
     })
 
-    const handleFormatoChange = (nuevoFormato: string) => {
-        setErrorMsg("")
-        setFormData(prev => ({
-            ...prev,
-            formato: nuevoFormato,
-            max_equipos: nuevoFormato === "eliminacion_directa" ? 8
-                : nuevoFormato === "fase_grupos" ? 16
-                    : 8,
-            fase_final: "cuartos",
-        }))
-    }
+    const formato = watch("formato")
+    const dias_operativos = watch("dias_operativos")
+    const fase_final = watch("fase_final")
+    const ida_y_vuelta = watch("ida_y_vuelta")
 
-    const handleChange = (
-        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-    ) => {
-        const { name, value, type } = e.target
-        setErrorMsg("")
-        let parsed: any = value
-        if (type === "checkbox") {
-            parsed = (e.target as HTMLInputElement).checked
-        } else if (name === "max_equipos" || name === "min_integrantes_por_equipo" || name === "costo_inscripcion") {
-            parsed = Number(value)
-        }
-        setFormData(prev => ({ ...prev, [name]: parsed }))
+    const handleFormatoChange = (nuevoFormato: string) => {
+        setValue("formato", nuevoFormato as any)
+        setValue("max_equipos", nuevoFormato === "eliminacion_directa" ? 8 : nuevoFormato === "fase_grupos" ? 16 : 8)
+        setValue("fase_final", "cuartos")
     }
 
     const handleFaseFinalChange = (fase: string) => {
-        setErrorMsg("")
-        setFormData(prev => ({
-            ...prev,
-            fase_final: fase,
-            max_equipos: FG_POR_FASE[fase][0],
-        }))
+        setValue("fase_final", fase)
+        setValue("max_equipos", FG_POR_FASE[fase][0])
     }
 
-    const toggleDia = (bit: number) =>
-        setFormData(prev => ({ ...prev, dias_operativos: prev.dias_operativos ^ (1 << bit) }))
-
-    const validateForm = () => {
-        if (!formData.nombre.trim()) return "El nombre del torneo es obligatorio."
-        if (!formData.fecha_inicio) return "La fecha de inicio es obligatoria."
-        if (!formData.fecha_fin) return "La fecha de fin es obligatoria."
-        const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-        const inicio = new Date(formData.fecha_inicio + "T00:00:00")
-        const fin = new Date(formData.fecha_fin + "T00:00:00")
-        if (inicio < hoy) return "La fecha de inicio no puede estar en el pasado."
-        if (fin <= inicio) return "La fecha de fin debe ser posterior a la fecha de inicio."
-        if (!formData.zona.trim()) return "La zona es obligatoria."
-        if (formData.dias_operativos === 0) return "Debe seleccionar al menos un día operativo."
-        if (!formData.apertura_h || !formData.cierre_h) return "La franja horaria es obligatoria."
-        const ah = formData.apertura_h.padStart(2, "0")
-        const ch = formData.cierre_h.padStart(2, "0")
-        if (`${ah}:${formData.apertura_m}` >= `${ch}:${formData.cierre_m}`)
-            return "El horario de cierre debe ser posterior al de apertura."
-        if (Number(formData.costo_inscripcion) < 0) return "El costo no puede ser negativo."
-        return null
+    const toggleDia = (bit: number) => {
+        setValue("dias_operativos", dias_operativos ^ (1 << bit))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        const err = validateForm()
-        if (err) { setErrorMsg(err); return }
-
+    const onSubmit = async (data: TorneoFormData) => {
+        setApiError("")
         setIsLoading(true)
-        const ah = formData.apertura_h.padStart(2, "0")
-        const ch = formData.cierre_h.padStart(2, "0")
-        const franja_horaria = `${ah}:${formData.apertura_m}-${ch}:${formData.cierre_m}`
+
+        const ah = data.apertura_h.padStart(2, "0")
+        const ch = data.cierre_h.padStart(2, "0")
+        const franja_horaria = `${ah}:${data.apertura_m}-${ch}:${data.cierre_m}`
 
         try {
             await crearTorneo({
-                nombre: formData.nombre,
-                fecha_inicio: new Date(formData.fecha_inicio + "T12:00:00").toISOString(),
-                fecha_fin: new Date(formData.fecha_fin + "T12:00:00").toISOString(),
-                formato: formData.formato,
-                zona: formData.zona,
-                dias_operativos: formData.dias_operativos,
+                nombre: data.nombre,
+                fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
+                fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),
+                formato: data.formato,
+                zona: data.zona,
+                dias_operativos: data.dias_operativos,
                 franja_horaria,
-                max_equipos: Number(formData.max_equipos),
-                min_integrantes_por_equipo: Number(formData.min_integrantes_por_equipo),
-                costo_inscripcion: Number(formData.costo_inscripcion),
-                ida_y_vuelta: formData.formato === "todos_contra_todos" ? formData.ida_y_vuelta : false,
-                fase_final: formData.formato === "fase_grupos" ? formData.fase_final : null,
-                descripcion: formData.descripcion,
-                reglas: formData.reglas,
+                max_equipos: data.max_equipos,
+                min_integrantes_por_equipo: data.min_integrantes_por_equipo,
+                costo_inscripcion: data.costo_inscripcion,
+                ida_y_vuelta: data.formato === "todos_contra_todos" ? data.ida_y_vuelta : false,
+                fase_final: data.formato === "fase_grupos" ? data.fase_final : null,
+                descripcion: data.descripcion,
+                reglas: data.reglas,
             })
             await Swal.fire({
                 title: "¡Torneo creado!",
@@ -152,8 +120,8 @@ export default function CrearTorneoPage() {
                 showConfirmButton: false,
             })
             router.push("/torneos")
-        } catch (error: any) {
-            setErrorMsg(error.message || "Error al crear el torneo.")
+        } catch (error) {
+            Swal.fire("Error", getErrorMessage(error) || "Error al crear el torneo.", "error")
             setIsLoading(false)
         }
     }
@@ -180,14 +148,9 @@ export default function CrearTorneoPage() {
             </div>
 
             <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-8">
-                <form onSubmit={handleSubmit} className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm space-y-8">
+                <form onSubmit={handleSubmit(onSubmit)} className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm space-y-8">
 
-                    {errorMsg && (
-                        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                            <p className="text-sm font-medium whitespace-pre-line">{errorMsg}</p>
-                        </div>
-                    )}
+
 
                     {/* ── Sección 1: Info básica ── */}
                     <section className="space-y-4">
@@ -198,11 +161,12 @@ export default function CrearTorneoPage() {
                         <div>
                             <label className={labelClass}>Nombre del Torneo *</label>
                             <input
-                                type="text" name="nombre" value={formData.nombre}
-                                onChange={handleChange}
+                                type="text"
                                 placeholder="Ej: Copa de Verano 2026"
-                                className={inputClass} required
+                                className={inputClass}
+                                {...register("nombre")}
                             />
+                            {errors.nombre && <p className="text-xs text-destructive mt-1">{errors.nombre.message}</p>}
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -210,21 +174,21 @@ export default function CrearTorneoPage() {
                                 <label className={labelClass}>Fecha de Inicio *</label>
                                 <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <input type="date" name="fecha_inicio" value={formData.fecha_inicio}
-                                        onChange={handleChange}
+                                    <input type="date"
                                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                        required />
+                                        {...register("fecha_inicio")} />
                                 </div>
+                                {errors.fecha_inicio && <p className="text-xs text-destructive mt-1">{errors.fecha_inicio.message}</p>}
                             </div>
                             <div>
                                 <label className={labelClass}>Fecha de Fin *</label>
                                 <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <input type="date" name="fecha_fin" value={formData.fecha_fin}
-                                        onChange={handleChange}
+                                    <input type="date"
                                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                        required />
+                                        {...register("fecha_fin")} />
                                 </div>
+                                {errors.fecha_fin && <p className="text-xs text-destructive mt-1">{errors.fecha_fin.message}</p>}
                             </div>
                         </div>
                     </section>
@@ -241,13 +205,13 @@ export default function CrearTorneoPage() {
                             <div className="relative">
                                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                 <input
-                                    type="text" name="zona" value={formData.zona}
-                                    onChange={handleChange}
+                                    type="text"
                                     placeholder="Ej: Palermo, Caballito, Villa Urquiza..."
                                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                    required
+                                    {...register("zona")}
                                 />
                             </div>
+                            {errors.zona && <p className="text-xs text-destructive mt-1">{errors.zona.message}</p>}
                             <p className="text-xs text-muted-foreground mt-1.5">
                                 La cancha específica se asigna al generar el fixture.
                             </p>
@@ -272,7 +236,7 @@ export default function CrearTorneoPage() {
                                         <button
                                             key={label}
                                             type="button"
-                                            onClick={() => setFormData(p => ({ ...p, dias_operativos: value }))}
+                                            onClick={() => setValue("dias_operativos", value)}
                                             className="px-3 py-1.5 text-[13px] rounded-lg border border-border bg-secondary text-muted-foreground hover:bg-primary/10 hover:text-primary hover:border-primary/50 transition-all"
                                         >
                                             {label}
@@ -282,7 +246,7 @@ export default function CrearTorneoPage() {
                             </div>
                             <div className="flex gap-2 flex-wrap">
                                 {DIAS.map(d => {
-                                    const active = (formData.dias_operativos >> d.bit) & 1
+                                    const active = (dias_operativos >> d.bit) & 1
                                     return (
                                         <button
                                             key={d.bit}
@@ -299,6 +263,7 @@ export default function CrearTorneoPage() {
                                     )
                                 })}
                             </div>
+                            {errors.dias_operativos && <p className="text-xs text-destructive mt-1">{errors.dias_operativos.message}</p>}
                         </div>
 
                         {/* Franja horaria — idéntico a canchas/nueva */}
@@ -307,19 +272,19 @@ export default function CrearTorneoPage() {
                             <p className="text-xs text-muted-foreground mt-1 mb-3">
                                 ¿En qué horario se juegan los partidos en esos días?
                             </p>
+                            {errors.cierre_h && <p className="text-xs text-destructive mb-2">{errors.cierre_h.message}</p>}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-muted-foreground">Hora de inicio (24hs)</label>
                                     <div className="flex items-center space-x-2">
                                     <input
-                                        name="apertura_h" type="number" min="0" max="23"
-                                        placeholder="HH" value={formData.apertura_h}
-                                        onChange={handleChange}
+                                        type="text" placeholder="HH" maxLength={2}
+                                        {...register("apertura_h")}
                                         className="flex h-11 w-[80px] rounded-lg bg-input border-0 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                     <span className="font-bold text-muted-foreground">:</span>
-                                    <select name="apertura_m" value={formData.apertura_m}
-                                        onChange={handleChange}
+                                    <select
+                                        {...register("apertura_m")}
                                         className="flex h-11 w-[80px] rounded-lg bg-input border-0 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
                                         <option value="00">00</option>
                                         <option value="15">15</option>
@@ -332,14 +297,13 @@ export default function CrearTorneoPage() {
                                 <label className="text-xs font-semibold text-muted-foreground">Hora de finalización (24hs)</label>
                                 <div className="flex items-center space-x-2">
                                     <input
-                                        name="cierre_h" type="number" min="0" max="23"
-                                        placeholder="HH" value={formData.cierre_h}
-                                        onChange={handleChange}
+                                        type="text" placeholder="HH" maxLength={2}
+                                        {...register("cierre_h")}
                                         className="flex h-11 w-[80px] rounded-lg bg-input border-0 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring"
                                     />
                                     <span className="font-bold text-muted-foreground">:</span>
-                                    <select name="cierre_m" value={formData.cierre_m}
-                                        onChange={handleChange}
+                                    <select
+                                        {...register("cierre_m")}
                                         className="flex h-11 w-[80px] rounded-lg bg-input border-0 px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring">
                                         <option value="00">00</option>
                                         <option value="15">15</option>
@@ -361,7 +325,7 @@ export default function CrearTorneoPage() {
                         <div>
                             <label className={labelClass}>Formato del Torneo *</label>
                             <select
-                                name="formato" value={formData.formato}
+                                {...register("formato")}
                                 onChange={e => handleFormatoChange(e.target.value)}
                                 className={inputClass}
                             >
@@ -372,10 +336,10 @@ export default function CrearTorneoPage() {
                         </div>
 
                         {/* Eliminación directa */}
-                        {formData.formato === "eliminacion_directa" && (
+                        {formato === "eliminacion_directa" && (
                             <div>
                                 <label className={labelClass}>Cantidad de Equipos *</label>
-                                <select name="max_equipos" value={formData.max_equipos} onChange={handleChange} className={inputClass}>
+                                <select {...register("max_equipos", { valueAsNumber: true })} className={inputClass}>
                                     {ED_OPCIONES.map(n => (
                                         <option key={n} value={n}>{n} equipos</option>
                                     ))}
@@ -387,7 +351,7 @@ export default function CrearTorneoPage() {
                         )}
 
                         {/* Fase de grupos */}
-                        {formData.formato === "fase_grupos" && (
+                        {formato === "fase_grupos" && (
                             <div className="space-y-4">
                                 <div>
                                     <label className={labelClass}>Fase de eliminación final *</label>
@@ -397,7 +361,7 @@ export default function CrearTorneoPage() {
                                                 key={fase}
                                                 type="button"
                                                 onClick={() => handleFaseFinalChange(fase)}
-                                                className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${formData.fase_final === fase
+                                                className={`py-3 px-2 rounded-xl border text-sm font-medium transition-all ${fase_final === fase
                                                     ? "bg-primary/10 border-primary border-[1.5px] text-primary"
                                                     : "bg-background border-border text-muted-foreground hover:bg-secondary hover:border-primary/50"
                                                     }`}
@@ -411,8 +375,8 @@ export default function CrearTorneoPage() {
                                 </div>
                                 <div>
                                     <label className={labelClass}>Cantidad de Equipos *</label>
-                                    <select name="max_equipos" value={formData.max_equipos} onChange={handleChange} className={inputClass}>
-                                        {FG_POR_FASE[formData.fase_final]?.map(n => (
+                                    <select {...register("max_equipos", { valueAsNumber: true })} className={inputClass}>
+                                        {FG_POR_FASE[fase_final || "cuartos"]?.map(n => (
                                             <option key={n} value={n}>{n} equipos</option>
                                         ))}
                                     </select>
@@ -421,28 +385,28 @@ export default function CrearTorneoPage() {
                         )}
 
                         {/* Todos contra todos */}
-                        {formData.formato === "todos_contra_todos" && (
+                        {formato === "todos_contra_todos" && (
                             <div className="space-y-4">
                                 <div>
                                     <label className={labelClass}>Cantidad de Equipos (4–30) *</label>
                                     <div className="relative">
                                         <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                         <input
-                                            type="number" name="max_equipos" min="4" max="30"
-                                            value={formData.max_equipos} onChange={handleChange}
+                                            type="number" min="4" max="30"
+                                            {...register("max_equipos", { valueAsNumber: true })}
                                             onWheel={e => e.currentTarget.blur()}
                                             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                            required
                                         />
                                     </div>
+                                    {errors.max_equipos && <p className="text-xs text-destructive mt-1">{errors.max_equipos.message}</p>}
                                 </div>
                                 {/* Toggle ida y vuelta */}
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <div
-                                        onClick={() => setFormData(p => ({ ...p, ida_y_vuelta: !p.ida_y_vuelta }))}
-                                        className={`relative w-11 h-6 rounded-full transition-colors ${formData.ida_y_vuelta ? "bg-primary" : "bg-muted"}`}
+                                        onClick={() => setValue("ida_y_vuelta", !ida_y_vuelta)}
+                                        className={`relative w-11 h-6 rounded-full transition-colors ${ida_y_vuelta ? "bg-primary" : "bg-muted"}`}
                                     >
-                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${formData.ida_y_vuelta ? "translate-x-5" : ""}`} />
+                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${ida_y_vuelta ? "translate-x-5" : ""}`} />
                                     </div>
                                     <div>
                                         <span className="text-sm font-medium flex items-center gap-1.5">
@@ -460,7 +424,7 @@ export default function CrearTorneoPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelClass}>Modalidad *</label>
-                                <select name="min_integrantes_por_equipo" value={formData.min_integrantes_por_equipo} onChange={handleChange} className={inputClass}>
+                                <select {...register("min_integrantes_por_equipo", { valueAsNumber: true })} className={inputClass}>
                                     <option value={5}>Fútbol 5</option>
                                     <option value={7}>Fútbol 7</option>
                                     <option value={9}>Fútbol 9</option>
@@ -472,13 +436,13 @@ export default function CrearTorneoPage() {
                                 <div className="relative">
                                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <input
-                                        type="number" inputMode="numeric" name="costo_inscripcion"
-                                        min="0" step="1" value={formData.costo_inscripcion}
-                                        onChange={handleChange} placeholder="Ej: 5000"
+                                        type="number" inputMode="numeric"
+                                        min="0" step="1" placeholder="Ej: 5000"
+                                        {...register("costo_inscripcion", { valueAsNumber: true })}
                                         className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                        required
                                     />
                                 </div>
+                                {errors.costo_inscripcion && <p className="text-xs text-destructive mt-1">{errors.costo_inscripcion.message}</p>}
                             </div>
                         </div>
                     </section>
@@ -490,14 +454,16 @@ export default function CrearTorneoPage() {
                         </h3>
                         <div>
                             <label className="block text-sm font-medium mb-1.5 text-muted-foreground">Descripción general</label>
-                            <textarea name="descripcion" value={formData.descripcion} onChange={handleChange}
+                            <textarea
                                 rows={3} placeholder="Premios, duración, info útil..."
+                                {...register("descripcion")}
                                 className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none resize-none" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1.5 text-muted-foreground">Reglas específicas</label>
-                            <textarea name="reglas" value={formData.reglas} onChange={handleChange}
+                            <textarea
                                 rows={3} placeholder="Ej: Solo calzado de sintético, sin plancha..."
+                                {...register("reglas")}
                                 className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none resize-none" />
                         </div>
                     </section>
