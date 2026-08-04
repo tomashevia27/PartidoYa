@@ -224,3 +224,66 @@ export const PartidoFormSchema = z.object({
 });
 
 export type PartidoFormValues = z.infer<typeof PartidoFormSchema>;
+
+export const JugadorSchema = z.object({
+  nombre: z.string().min(1, "El nombre del jugador es obligatorio."),
+  email: z.string().min(1, "El email es obligatorio.").email("Debe ser un correo válido.")
+});
+
+export const InscripcionEquipoSchema = z.object({
+  nombre_equipo: z.string().min(1, "El nombre del equipo es obligatorio."),
+  escudo: z.string().url("Debe ser una URL válida.").optional().or(z.literal("")),
+  jugadores: z.array(JugadorSchema).min(1, "Debés ingresar al menos al capitán o primer jugador."),
+  min_jugadores: z.number().optional(),
+  max_jugadores: z.number().optional()
+}).superRefine((data, ctx) => {
+  if (data.min_jugadores && data.jugadores.length < data.min_jugadores) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `El equipo debe tener al menos ${data.min_jugadores} jugadores.`,
+      path: ["jugadores"]
+    });
+  }
+  if (data.max_jugadores && data.jugadores.length > data.max_jugadores) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `El equipo no puede tener más de ${data.max_jugadores} jugadores.`,
+      path: ["jugadores"]
+    });
+  }
+});
+
+export type InscripcionEquipoValues = z.infer<typeof InscripcionEquipoSchema>;
+
+export const LoginSchema = z.object({
+  email: z.string().min(1, "El email es obligatorio.").email("Formato de email inválido."),
+  password: z.string().min(1, "La contraseña es obligatoria.")
+});
+export type LoginValues = z.infer<typeof LoginSchema>;
+
+export const RegisterSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio."),
+  apellido: z.string().min(1, "El apellido es obligatorio."),
+  email: z.string().min(1, "El email es obligatorio.").email("Formato de email inválido."),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+  confirmPassword: z.string().min(1, "Confirmar la contraseña es obligatorio."),
+  edad: z.coerce.number().min(0, "La edad debe ser válida").optional().or(z.literal("").transform(() => undefined)),
+  genero: z.string().optional(),
+  zona: z.string().optional(),
+  rol: z.enum(["jugador", "dueño"], { errorMap: () => ({ message: "Selecciona un rol válido" }) })
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"]
+});
+export type RegisterValues = z.infer<typeof RegisterSchema>;
+
+export const ProfileEditSchema = z.object({
+  nombre: z.string().min(1, "El nombre es obligatorio."),
+  apellido: z.string().min(1, "El apellido es obligatorio."),
+  edad: z.coerce.number().min(0, "La edad debe ser mayor o igual a 0").optional().or(z.literal("").transform(() => undefined)),
+  genero: z.string().optional(),
+  zona: z.string().optional(),
+  password: z.string().optional(),
+});
+export type ProfileEditValues = z.infer<typeof ProfileEditSchema>;
+

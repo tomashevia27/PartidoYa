@@ -14,13 +14,22 @@ import { Loader2, Mail, Lock, Trophy } from "lucide-react"
 import Swal from 'sweetalert2'
 import 'sweetalert2/dist/sweetalert2.min.css'
 import { getErrorMessage } from "@/lib/api-client"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { LoginSchema, type LoginValues } from "@/lib/schemas"
 
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuthContext()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginValues>({
+    resolver: zodResolver(LoginSchema),
+    defaultValues: { email: "", password: "" }
+  })
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -38,25 +47,11 @@ export default function LoginPage() {
     }
   }, [])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-
-    if (!email || !password) {
-      Swal.fire({
-        title: "Atención",
-        text: "El email y la contraseña son requeridos.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A", // Mantiene tu color naranja original
-      })
-      return
-    }
-
-    setIsLoading(true)
-
+  const onSubmit = async (data: LoginValues) => {
     try {
-      const data = await loginUser(email, password)
+      const response = await loginUser(data.email, data.password)
 
-      login(String(data.usuario_id), data.rol, data.access_token)
+      login(String(response.usuario_id), response.rol, response.access_token)
 
       await Swal.fire({
         title: "¡Bienvenido!",
@@ -83,7 +78,7 @@ export default function LoginPage() {
           cancelButtonText: "Cancelar"
         }).then((result) => {
           if (result.isConfirmed) {
-            router.push(`/confirm?email=${encodeURIComponent(email)}`)
+            router.push(`/confirm?email=${encodeURIComponent(data.email)}`)
           }
         })
       } else {
@@ -94,11 +89,8 @@ export default function LoginPage() {
           confirmButtonColor: "#FF6B4A",
         })
       }
-    } finally {
-      setIsLoading(false)
     }
   }
-
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -149,50 +141,46 @@ export default function LoginPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email
-              </Label>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-foreground font-medium">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                  <Mail className="h-5 w-5" />
+                </div>
                 <Input
                   id="email"
                   type="email"
                   placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-gray-900 placeholder:text-gray-400"
+                  {...register("email")}
+                  className="pl-10 h-12 bg-background border-border focus-visible:ring-primary focus-visible:border-primary"
                 />
               </div>
+              {errors.email && <p className="text-destructive text-sm mt-1">{errors.email.message}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Contraseña
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-foreground font-medium">Contraseña</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-muted-foreground">
+                  <Lock className="h-5 w-5" />
+                </div>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 bg-gray-50 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-gray-900 placeholder:text-gray-400"
+                  placeholder="••••••••"
+                  {...register("password")}
+                  className="pl-10 h-12 bg-background border-border focus-visible:ring-primary focus-visible:border-primary"
                 />
               </div>
+              {errors.password && <p className="text-destructive text-sm mt-1">{errors.password.message}</p>}
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-12 font-semibold text-base rounded-xl bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] mt-2"
-              disabled={isLoading}
-            >
-              {isLoading ? (
+            <Button type="submit" className="w-full h-12 text-base font-semibold mt-6" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Ingresando...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Iniciando sesión...
                 </>
               ) : (
                 "Ingresar"

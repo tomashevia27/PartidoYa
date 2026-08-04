@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button"
 import { getTorneo, inscribirEquipo, TorneoData } from "@/hooks/use-api"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
-
-interface Jugador {
-    nombre: string;
-    email: string;
-}
+import { useForm, useFieldArray } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { InscripcionEquipoSchema, type InscripcionEquipoValues } from "@/lib/schemas"
 
 export default function InscripcionTorneoPage() {
     const { id } = useParams()
@@ -22,11 +20,25 @@ export default function InscripcionTorneoPage() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errorMsg, setErrorMsg] = useState("")
 
-    const [nombreEquipo, setNombreEquipo] = useState("")
-    const [escudo, setEscudo] = useState("")
-    const [jugadores, setJugadores] = useState<Jugador[]>([
-        { nombre: "", email: ""} // Arranca con un casillero vacío para el primer jugador
-    ])
+    const {
+        register,
+        control,
+        handleSubmit,
+        setValue,
+        formState: { errors }
+    } = useForm<InscripcionEquipoValues>({
+        resolver: zodResolver(InscripcionEquipoSchema),
+        defaultValues: {
+            nombre_equipo: "",
+            escudo: "",
+            jugadores: [{ nombre: "", email: "" }]
+        }
+    })
+
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "jugadores"
+    })
 
     useEffect(() => {
         async function fetchTorneo() {
@@ -38,6 +50,9 @@ export default function InscripcionTorneoPage() {
                     setErrorMsg("Este torneo no está abierto para nuevas inscripciones.")
                 } else if (data.equipos_inscriptos >= data.max_equipos) {
                     setErrorMsg("Este torneo ya completó su cupo máximo de equipos.")
+                } else {
+                    setValue("min_jugadores", data.min_integrantes_por_equipo || 5)
+                    setValue("max_jugadores", (data.min_integrantes_por_equipo || 5) * 2)
                 }
             } catch (err) {
                 setErrorMsg(getErrorMessage(err) || "Torneo no encontrado")
@@ -48,58 +63,8 @@ export default function InscripcionTorneoPage() {
         fetchTorneo()
     }, [id])
 
-    // Maneja cambios en Nombre del Equipo y Escudo
-    const handleLimpiarError = () => {
-        if (errorMsg && torneo && torneo.estado === "Abierto para inscripción" && torneo.equipos_inscriptos < torneo.max_equipos) {
-            setErrorMsg("")
-        }
-    }
-
-    // Funciones para gestionar el array de jugadores
-    const handleJugadorChange = (index: number, field: keyof Jugador, value: string) => {
-        handleLimpiarError()
-        setJugadores(prev => {
-            const nuevos = [...prev]
-            nuevos[index] = { ...nuevos[index], [field]: value }
-            return nuevos
-        })
-    }
-
-    const agregarJugador = () => {
-        if (alcanzoMaximoJugadores) return 
-        setJugadores(prev => [...prev, { nombre: "", email: ""}])
-    }
-
-    const eliminarJugador = (index: number) => {
-        if (jugadores.length === 1) return;
-        setJugadores(prev => prev.filter((_, i) => i !== index))
-    }
-
-    const validateForm = () => {
-        if (!nombreEquipo.trim()) return "El nombre del equipo es obligatorio."
-        
-        if (jugadores.length === 0 || !jugadores[0].nombre.trim()) {
-            return "Debés ingresar al menos al capitán o primer jugador."
-        }
-
-        for (let i = 0; i < jugadores.length; i++) {
-            const j = jugadores[i];
-            if (!j.nombre.trim() || !j.email.trim()) {
-                return `Por favor, completa todos los datos del jugador número ${i + 1}.`
-            }
-        }
-        return null
-    }
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const onSubmit = async (data: InscripcionEquipoValues) => {
         if (!torneo) return
-
-        const error = validateForm()
-        if (error) {
-            setErrorMsg(error)
-            return
-        }
 
         // Confirmación previa
         const precioFormateado = new Intl.NumberFormat("es-AR", {
@@ -124,9 +89,9 @@ export default function InscripcionTorneoPage() {
         setIsSubmitting(true)
         try {
             const payload = {
-                nombre_equipo: nombreEquipo,
-                escudo: escudo,
-                jugadores: JSON.stringify(jugadores)
+                nombre_equipo: data.nombre_equipo,
+                escudo: data.escudo || "",
+                jugadores: JSON.stringify(data.jugadores)
             }
 
             await inscribirEquipo(torneo.id, payload)
@@ -177,9 +142,9 @@ export default function InscripcionTorneoPage() {
             </div>
         )
     }
-    const minJugadoresRequeridos = torneo ? torneo.min_integrantes_por_equipo : 5
-    const maxJugadoresPermitidos = (torneo ? torneo.min_integrantes_por_equipo : 5) * 2
-    const alcanzoMaximoJugadores = jugadores.length >= maxJugadoresPermitidos
+    const minJugadoresRequeridos = torneo?.min_integrantes_por_equipo || 5
+    const maxJugadoresPermitidos = (torneo?.min_integrantes_por_equipo || 5) * 2
+    const alcanzoMaximoJugadores = fields.length >= maxJugadoresPermitidos
 
     const bloqueado = !!errorMsg && (torneo?.estado !== "Abierto para inscripción" || (torneo && torneo.equipos_inscriptos >= torneo.max_equipos));
 
@@ -204,7 +169,7 @@ export default function InscripcionTorneoPage() {
 
             {/* Formulario */}
             <div className="max-w-2xl mx-auto px-4 sm:px-6 mt-8">
-                <form onSubmit={handleSubmit} className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
+                <form onSubmit={handleSubmit(onSubmit)} noValidate className="bg-card rounded-2xl border border-border p-6 sm:p-8 shadow-sm">
                     {errorMsg && (
                         <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -221,12 +186,11 @@ export default function InscripcionTorneoPage() {
                             </label>
                             <input
                                 type="text"
-                                value={nombreEquipo}
-                                onChange={(e) => { setNombreEquipo(e.target.value); handleLimpiarError(); }}
+                                {...register("nombre_equipo")}
                                 placeholder="Ej: Los Galácticos"
                                 className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
-                                required
                             />
+                            {errors.nombre_equipo && <p className="text-destructive text-sm mt-1">{errors.nombre_equipo.message}</p>}
                         </div>
 
                         {/* AGREGADOR DE JUGADORES */}
@@ -234,13 +198,13 @@ export default function InscripcionTorneoPage() {
                             <div className="flex items-center justify-between">
                                 <label className="block text-sm font-medium text-foreground flex items-center gap-2">
                                     <Users className="w-4 h-4 text-primary" />
-                                    Lista de Jugadores ({jugadores.length} / mín. {minJugadoresRequeridos} &mdash; máx. {maxJugadoresPermitidos}) *
+                                    Lista de Jugadores ({fields.length} / mín. {minJugadoresRequeridos} &mdash; máx. {maxJugadoresPermitidos}) *
                                 </label>
                                 <Button 
                                     type="button" 
                                     variant="outline" 
                                     size="sm" 
-                                    onClick={agregarJugador}
+                                    onClick={() => { if (!alcanzoMaximoJugadores) append({ nombre: "", email: "" }) }}
                                     disabled={alcanzoMaximoJugadores}
                                     className="gap-1.5 h-8 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
@@ -256,47 +220,48 @@ export default function InscripcionTorneoPage() {
                             </p>
                             
                             <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                                {jugadores.map((jugador, index) => (
-                                    <div key={index} className="flex flex-col sm:flex-row gap-2 bg-muted/40 p-3 rounded-xl border border-border items-center relative group">
-                                        <div className="absolute -left-2 top-1/2 -translate-y-1/2 bg-background border border-border text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground shadow-sm">
-                                            {index + 1}
-                                        </div>
-                                        
-                                        <div className="w-full sm:flex-1 pl-2">
-                                            <input
-                                                type="text"
-                                                placeholder="Nombre y Apellido"
-                                                value={jugador.nombre}
-                                                onChange={(e) => handleJugadorChange(index, "nombre", e.target.value)}
-                                                className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-background outline-none focus:border-primary"
-                                                required
-                                            />
-                                        </div>
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="flex flex-col gap-1">
+                                        <div className="flex flex-col sm:flex-row gap-2 bg-muted/40 p-3 rounded-xl border border-border items-center relative group">
+                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 bg-background border border-border text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground shadow-sm">
+                                                {index + 1}
+                                            </div>
+                                            
+                                            <div className="w-full sm:flex-1 pl-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Nombre y Apellido"
+                                                    {...register(`jugadores.${index}.nombre` as const)}
+                                                    className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-background outline-none focus:border-primary"
+                                                />
+                                            </div>
 
-                                        <div className="w-full sm:flex-1">
-                                            <input
-                                                type="email"
-                                                placeholder="Email"
-                                                value={jugador.email}
-                                                onChange={(e) => handleJugadorChange(index, "email", e.target.value)}
-                                                className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-background outline-none focus:border-primary"
-                                                required
-                                            />
-                                        </div>
+                                            <div className="w-full sm:flex-1">
+                                                <input
+                                                    type="email"
+                                                    placeholder="Email"
+                                                    {...register(`jugadores.${index}.email` as const)}
+                                                    className="w-full text-xs px-3 py-2 rounded-lg border border-border bg-background outline-none focus:border-primary"
+                                                />
+                                            </div>
 
-                                        {jugadores.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => eliminarJugador(index)}
-                                                className="text-destructive hover:bg-destructive/10 p-2 rounded-lg transition-colors sm:self-center self-end"
-                                                title="Eliminar jugador"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                            {fields.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => remove(index)}
+                                                    className="text-destructive hover:bg-destructive/10 p-2 rounded-lg transition-colors sm:self-center self-end"
+                                                    title="Eliminar jugador"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        {errors?.jugadores?.[index]?.nombre && <p className="text-destructive text-xs ml-3">{errors.jugadores[index]?.nombre?.message}</p>}
+                                        {errors?.jugadores?.[index]?.email && <p className="text-destructive text-xs ml-3">{errors.jugadores[index]?.email?.message}</p>}
                                     </div>
                                 ))}
                             </div>
+                            {errors.jugadores?.message && typeof errors.jugadores.message === 'string' && <p className="text-destructive text-sm mt-1">{errors.jugadores.message}</p>}
                         </div>
 
                         {/* Escudo */}
@@ -308,11 +273,11 @@ export default function InscripcionTorneoPage() {
                             <p className="text-xs text-muted-foreground mb-2">Podés pegar una URL con el logo de tu equipo.</p>
                             <input
                                 type="url"
-                                value={escudo}
-                                onChange={(e) => { setEscudo(e.target.value); handleLimpiarError(); }}
+                                {...register("escudo")}
                                 placeholder="https://ejemplo.com/mi-escudo.png"
                                 className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none"
                             />
+                            {errors.escudo && <p className="text-destructive text-sm mt-1">{errors.escudo.message}</p>}
                         </div>
 
                         {/* Totales */}

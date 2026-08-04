@@ -668,7 +668,7 @@ export async function getTorneosDisponibles(): Promise<TorneoData[]> {
 
 export async function getMisTorneos(): Promise<TorneoData[]> {
     try {
-        const data = await fetchApi(`/api/torneos/mis-torneos`);
+        const data = await fetchApi(`/api/torneos/mis-torneos`) as any;
         // The backend returns { proximos: [], en_curso: [], finalizados: [], cancelados: [] }
         // We need to flatten it for the frontend components that expect an array
         const allTorneos = [

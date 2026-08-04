@@ -23,29 +23,35 @@ import {
   updateUserProfile,
   uploadImageToCloudinary,
 } from "@/hooks/use-api"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { ProfileEditSchema, type ProfileEditValues } from "@/lib/schemas"
 
-type ProfileFormData = {
-  nombre: string
-  apellido: string
-  edad: string
-  genero: string
-  zona: string
-  password: string
-}
 
 export default function EditProfilePage() {
   const router = useRouter()
   const { userId } = useAuthContext()
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [formData, setFormData] = useState<ProfileFormData>({
-    nombre: "",
-    apellido: "",
-    edad: "",
-    genero: "Masculino",
-    zona: "",
-    password: "",
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors, isSubmitting: isSaving }
+  } = useForm<ProfileEditValues>({
+    resolver: zodResolver(ProfileEditSchema),
+    defaultValues: {
+      nombre: "",
+      apellido: "",
+      edad: undefined,
+      genero: "Masculino",
+      zona: "",
+      password: "",
+    }
   })
+
+  const watchGenero = watch("genero")
   const [foto, setFoto] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState("")
   const [notifPartidos, setNotifPartidos] = useState(true)
@@ -57,10 +63,10 @@ export default function EditProfilePage() {
 
       try {
         const data = await getUserProfile()
-        setFormData({
+        reset({
           nombre: data.nombre,
           apellido: data.apellido,
-          edad: String(data.edad),
+          edad: data.edad,
           genero: data.genero,
           zona: data.zona,
           password: "",
@@ -79,12 +85,6 @@ export default function EditProfilePage() {
     loadProfile()
   }, [userId])
 
-  function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    setFormData((prev: ProfileFormData) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -98,26 +98,9 @@ export default function EditProfilePage() {
     }
   }
 
-  function handleGeneroChange(value: string) {
-    setFormData((prev: ProfileFormData) => ({ ...prev, genero: value }))
-  }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-
-    if (!formData.nombre.trim() || !formData.apellido.trim()) {
-      Swal.fire({
-        title: "Atención",
-        text: "El nombre y apellido son obligatorios y no pueden quedar en blanco.",
-        icon: "warning",
-        confirmButtonColor: "#FF6B4A",
-      })
-      return
-    }
-
+  const onSubmit = async (data: ProfileEditValues) => {
     if (!userId) return
-
-    setIsSaving(true)
 
     try {
       let fotoUrl: string | undefined
@@ -132,7 +115,6 @@ export default function EditProfilePage() {
             icon: "error",
             confirmButtonColor: "#FF6B4A",
           })
-          setIsSaving(false)
           return
         }
       } else if (!avatarPreview.includes("ui-avatars.com")) {
@@ -140,12 +122,12 @@ export default function EditProfilePage() {
       }
 
       await updateUserProfile({
-        nombre: formData.nombre,
-        apellido: formData.apellido,
-        edad: parseInt(formData.edad),
-        genero: formData.genero,
-        zona: formData.zona,
-        password: formData.password.trim() ? formData.password : undefined,
+        nombre: data.nombre,
+        apellido: data.apellido,
+        edad: data.edad,
+        genero: data.genero,
+        zona: data.zona,
+        password: data.password?.trim() ? data.password : undefined,
         foto_perfil: fotoUrl,
       })
 
@@ -164,8 +146,6 @@ export default function EditProfilePage() {
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -191,7 +171,7 @@ export default function EditProfilePage() {
           <h1 className="text-2xl font-bold text-foreground mb-1">Configuración del Perfil</h1>
           <p className="text-muted-foreground mb-8">Actualizá tu información personal</p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <div className="flex flex-col md:flex-row gap-8">
               {/* Form Fields */}
               <div className="flex-1 space-y-6">
@@ -202,11 +182,10 @@ export default function EditProfilePage() {
                     </Label>
                     <Input
                       id="nombre"
-                      name="nombre"
-                      value={formData.nombre}
-                      onChange={handleChange}
+                      {...register("nombre")}
                       className="bg-input border-0 h-11"
                     />
+                    {errors.nombre && <p className="text-destructive text-sm mt-1">{errors.nombre.message}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="apellido" className="font-medium text-sm">
@@ -214,11 +193,10 @@ export default function EditProfilePage() {
                     </Label>
                     <Input
                       id="apellido"
-                      name="apellido"
-                      value={formData.apellido}
-                      onChange={handleChange}
+                      {...register("apellido")}
                       className="bg-input border-0 h-11"
                     />
+                    {errors.apellido && <p className="text-destructive text-sm mt-1">{errors.apellido.message}</p>}
                   </div>
                 </div>
 
@@ -229,20 +207,19 @@ export default function EditProfilePage() {
                     </Label>
                     <Input
                       id="edad"
-                      name="edad"
                       type="number"
-                      value={formData.edad}
-                      onChange={handleChange}
+                      {...register("edad")}
                       className="bg-input border-0 h-11"
                     />
+                    {errors.edad && <p className="text-destructive text-sm mt-1">{errors.edad.message}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="genero" className="font-medium text-sm">
                       Género
                     </Label>
                     <Select
-                      value={formData.genero}
-                      onValueChange={handleGeneroChange}
+                      value={watchGenero || "Masculino"}
+                      onValueChange={(value) => setValue("genero", value)}
                     >
                       <SelectTrigger className="bg-input border-0 h-11">
                         <SelectValue />
@@ -262,9 +239,7 @@ export default function EditProfilePage() {
                   </Label>
                   <Input
                     id="zona"
-                    name="zona"
-                    value={formData.zona}
-                    onChange={handleChange}
+                    {...register("zona")}
                     className="bg-input border-0 h-11"
                   />
                 </div>
@@ -275,11 +250,9 @@ export default function EditProfilePage() {
                   </Label>
                   <Input
                     id="password"
-                    name="password"
                     type="password"
                     placeholder="Oculta por seguridad (escribí para cambiar)"
-                    value={formData.password}
-                    onChange={handleChange}
+                    {...register("password")}
                     className="bg-input border-0 h-11"
                   />
                 </div>

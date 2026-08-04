@@ -18,6 +18,9 @@ import { registerUser, uploadImageToCloudinary } from "@/hooks/use-api"
 import Swal from 'sweetalert2'
 import { Camera, Trophy, Users } from "lucide-react"
 import { getErrorMessage } from "@/lib/api-client"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { RegisterSchema, type RegisterValues } from "@/lib/schemas"
 
 function SportsIcon({ className }: { className?: string }) {
   return (
@@ -34,26 +37,32 @@ function SportsIcon({ className }: { className?: string }) {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    nombre: "",
-    apellido: "",
-    email: "",
-    password: "",
-    edad: "",
-    genero: "Masculino",
-    zona: "",
-    rol: "jugador",
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting }
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(RegisterSchema),
+    defaultValues: {
+      nombre: "",
+      apellido: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      edad: undefined,
+      genero: "Masculino",
+      zona: "",
+      rol: "jugador" as any
+    }
   })
+
+  const watchRol = watch("rol")
+  const watchGenero = watch("genero")
   const [foto, setFoto] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
 
   function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -67,9 +76,7 @@ export default function RegisterPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
+  const onSubmit = async (data: RegisterValues) => {
 
     try {
       let fotoUrl: string | undefined
@@ -83,25 +90,24 @@ export default function RegisterPage() {
             icon: "error",
             confirmButtonColor: "#FF6B4A",
           })
-          setIsLoading(false)
           return
         }
       }
 
       const userData = {
-        nombre: formData.nombre,
-        apellido: formData.apellido,
-        email: formData.email,
-        password: formData.password,
-        edad: parseInt(formData.edad),
-        genero: formData.genero,
-        zona: formData.zona,
-        rol: formData.rol,
+        nombre: data.nombre,
+        apellido: data.apellido,
+        email: data.email,
+        password: data.password,
+        edad: data.edad,
+        genero: data.genero,
+        zona: data.zona,
+        rol: data.rol,
         foto_perfil: fotoUrl,
       }
 
-      await registerUser(userData)
-      router.push(`/confirm?email=${encodeURIComponent(formData.email)}`)
+      await registerUser(userData as any)
+      router.push(`/confirm?email=${encodeURIComponent(data.email)}`)
     } catch (error) {
       Swal.fire({
         title: "No se pudo registrar",
@@ -109,8 +115,6 @@ export default function RegisterPage() {
         icon: "error",
         confirmButtonColor: "#FF6B4A",
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -194,7 +198,7 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
             {/* Foto de Perfil */}
             <div className="flex justify-center">
               <label htmlFor="foto" className="cursor-pointer group">
@@ -218,54 +222,57 @@ export default function RegisterPage() {
                 <Label htmlFor="nombre" className="text-xs text-zinc-300">Nombre</Label>
                 <Input
                   id="nombre"
-                  name="nombre"
                   placeholder="Tu nombre"
-                  value={formData.nombre}
-                  onChange={handleChange}
-                  required
+                  {...register("nombre")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
+                {errors.nombre && <p className="text-destructive text-xs mt-1">{errors.nombre.message}</p>}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="apellido" className="text-xs text-zinc-300">Apellido</Label>
                 <Input
                   id="apellido"
-                  name="apellido"
                   placeholder="Tu apellido"
-                  value={formData.apellido}
-                  onChange={handleChange}
-                  required
+                  {...register("apellido")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
+                {errors.apellido && <p className="text-destructive text-xs mt-1">{errors.apellido.message}</p>}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
+            <div className="space-y-1">
                 <Label htmlFor="email" className="text-xs text-zinc-300">Email</Label>
                 <Input
                   id="email"
-                  name="email"
                   type="email"
                   placeholder="tu@email.com"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
+                  {...register("email")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
-              </div>
+                {errors.email && <p className="text-destructive text-xs mt-1">{errors.email.message}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label htmlFor="password" className="text-xs text-zinc-300">Contraseña</Label>
                 <Input
                   id="password"
-                  name="password"
                   type="password"
                   placeholder="********"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
+                  {...register("password")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
+                {errors.password && <p className="text-destructive text-xs mt-1">{errors.password.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="confirmPassword" className="text-xs text-zinc-300">Confirmar Contraseña</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="********"
+                  {...register("confirmPassword")}
+                  className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
+                />
+                {errors.confirmPassword && <p className="text-destructive text-xs mt-1">{errors.confirmPassword.message}</p>}
               </div>
             </div>
 
@@ -274,20 +281,17 @@ export default function RegisterPage() {
                 <Label htmlFor="edad" className="text-xs text-zinc-300">Edad</Label>
                 <Input
                   id="edad"
-                  name="edad"
                   type="number"
                   placeholder="25"
-                  value={formData.edad}
-                  onChange={handleChange}
-                  required
+                  {...register("edad")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="genero" className="text-xs text-zinc-300">Género</Label>
                 <Select
-                  value={formData.genero}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, genero: value }))}
+                  value={watchGenero || "Masculino"}
+                  onValueChange={(value) => setValue("genero", value)}
                 >
                   <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white h-9 text-sm focus:ring-primary">
                     <SelectValue />
@@ -303,11 +307,8 @@ export default function RegisterPage() {
                 <Label htmlFor="zona" className="text-xs text-zinc-300">Zona</Label>
                 <Input
                   id="zona"
-                  name="zona"
                   placeholder="Palermo"
-                  value={formData.zona}
-                  onChange={handleChange}
-                  required
+                  {...register("zona")}
                   className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 h-9 text-sm focus-visible:ring-primary"
                 />
               </div>
@@ -316,8 +317,8 @@ export default function RegisterPage() {
             <div className="space-y-1">
               <Label htmlFor="rol" className="text-xs text-zinc-300">Rol</Label>
               <Select
-                value={formData.rol}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, rol: value }))}
+                value={watchRol}
+                onValueChange={(value) => setValue("rol", value as "jugador" | "dueño")}
               >
                 <SelectTrigger className="bg-zinc-900 border-zinc-800 text-white h-9 text-sm focus:ring-primary">
                   <SelectValue />
@@ -342,9 +343,9 @@ export default function RegisterPage() {
             <Button
               type="submit"
               className="w-full font-bold h-10 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 transition-all duration-300 hover:scale-[1.02]"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                   <span>Registrando...</span>
