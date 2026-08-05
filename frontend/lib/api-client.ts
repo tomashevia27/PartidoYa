@@ -14,13 +14,15 @@ export function getAccessToken(): string | null {
 
 export class ApiError extends Error {
   public status: number;
-  public data: any;
+  public data: unknown;
+  public isValidationError: boolean;
 
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: unknown, isValidationError: boolean = false) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.data = data;
+    this.isValidationError = isValidationError;
   }
 }
 
@@ -34,6 +36,17 @@ export function getErrorMessage(error: unknown): string {
     return "No se pudo conectar con el servidor. Revisá tu conexión a internet.";
   }
   return msg;
+}
+
+type FastAPIValidationError = {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+};
+
+// Type guard para chequear si es un error de Pydantic
+function isFastAPIValidationError(detail: unknown): detail is FastAPIValidationError[] {
+  return Array.isArray(detail) && detail.length > 0 && typeof detail[0] === "object" && detail[0] !== null && "msg" in detail[0];
 }
 
 export async function fetchApi<T>(
@@ -65,7 +78,7 @@ export async function fetchApi<T>(
   }
 
   // 5. Intentar parsear a JSON de forma segura
-  let data: any = null;
+  let data: unknown = null;
   const contentType = response.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
     data = await response.json().catch(() => null);
@@ -76,25 +89,23 @@ export async function fetchApi<T>(
   // 6. Manejo estructurado de errores (4xx y 5xx)
   if (!response.ok) {
     if (response.status === 401 && typeof window !== "undefined") {
-      sessionStorage.removeItem("partidoya_auth_user_id");
-      sessionStorage.removeItem("partidoya_auth_user_role");
-      sessionStorage.removeItem("partidoya_auth_access_token");
-      window.location.href = "/login?expired=true";
-      await new Promise(() => {}); // Detener ejecución mientras el navegador redirige
+      window.dispatchEvent(new CustomEvent("auth:expired"));
+      await new Promise(() => {}); // Detener ejecución mientras el enrutador de React procesa el evento
     }
 
     let errorMessage = "Error inesperado en la petición";
     
-    if (data && typeof data === "object") {
-       if (data.detail) {
-          if (Array.isArray(data.detail)) {
+    if (data !== null && typeof data === "object") {
+       if ("detail" in data) {
+          const detail = (data as { detail: unknown }).detail;
+          if (isFastAPIValidationError(detail)) {
              // Formato de error de validación Pydantic/FastAPI
-             errorMessage = data.detail.map((err: any) => err.msg || "Error de validación").join(", ");
-          } else if (typeof data.detail === "string") {
-             errorMessage = data.detail;
+             errorMessage = detail.map(err => err.msg || "Error de validación").join(", ");
+          } else if (typeof detail === "string") {
+             errorMessage = detail;
           }
-       } else if (data.mensaje) {
-          errorMessage = data.mensaje;
+       } else if ("mensaje" in data && typeof (data as any).mensaje === "string") {
+          errorMessage = (data as { mensaje: string }).mensaje;
        }
     } else if (typeof data === "string" && data) {
         errorMessage = data; // HTML o string plano (ej. nginx 502)
@@ -109,7 +120,7 @@ export async function fetchApi<T>(
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error("Zod Validation Error:", error.errors);
-        throw new ApiError("Error de validación: La respuesta del servidor no tiene el formato esperado.", 500, error.errors);
+        throw new ApiError("Error de validación: La respuesta del servidor no tiene el formato esperado.", 500, error.errors, true);
       }
       throw error;
     }

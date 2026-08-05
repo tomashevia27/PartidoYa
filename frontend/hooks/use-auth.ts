@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 
 const AUTH_SESSION_KEY = "partidoya_auth_user_id"
 const AUTH_ROLE_KEY = "partidoya_auth_user_role"
@@ -11,6 +12,7 @@ export function useAuth() {
   const [role, setRole] = useState<string | null>(null)
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem(AUTH_SESSION_KEY)
@@ -20,7 +22,23 @@ export function useAuth() {
     setRole(storedRole)
     setAccessToken(storedAccessToken)
     setIsLoading(false)
-  }, [])
+
+    const handleAuthExpired = () => {
+      sessionStorage.removeItem(AUTH_SESSION_KEY)
+      sessionStorage.removeItem(AUTH_ROLE_KEY)
+      sessionStorage.removeItem(AUTH_TOKEN_KEY)
+      setUserId(null)
+      setRole(null)
+      setAccessToken(null)
+      router.push("/login?expired=true")
+    }
+
+    window.addEventListener("auth:expired", handleAuthExpired)
+
+    return () => {
+      window.removeEventListener("auth:expired", handleAuthExpired)
+    }
+  }, [router])
 
   const login = useCallback((id: string, userRole: string, token: string) => {
     sessionStorage.setItem(AUTH_SESSION_KEY, String(id))
