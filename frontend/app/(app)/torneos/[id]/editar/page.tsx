@@ -11,10 +11,10 @@ import {
     RefreshCw, Layers, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TorneosService } from "@/services/torneos.service"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
+import { useTorneo, useTorneoMutations } from "@/hooks/use-torneos-query"
 
 // ─── Constantes de opciones por formato ───────────────────────────────────────
 const ED_OPCIONES = [2, 4, 8, 16, 32, 64]
@@ -35,9 +35,13 @@ const DIAS = [
 
 export default function EditarTorneoPage() {
     const { id } = useParams()
+    const torneoId = Number(id)
     const router = useRouter()
+    
+    const { data: torneo, isLoading: isFetching, isError } = useTorneo(torneoId)
+    const { updateTorneo } = useTorneoMutations()
+
     const [isLoading, setIsLoading] = useState(false)
-    const [isFetching, setIsFetching] = useState(true)
     const [apiError, setApiError] = useState("")
 
     const {
@@ -76,55 +80,52 @@ export default function EditarTorneoPage() {
     const ida_y_vuelta = watch("ida_y_vuelta")
 
     useEffect(() => {
-        async function fetchTorneo() {
-            try {
-                const data = await TorneosService.getById(Number(id))
-                
-                let fi = "";
-                let ff = "";
-                if (data.fecha_inicio) {
-                    fi = new Date(data.fecha_inicio).toISOString().split('T')[0]
-                }
-                if (data.fecha_fin) {
-                    ff = new Date(data.fecha_fin).toISOString().split('T')[0]
-                }
-                
-                const [apertura, cierre] = data.franja_horaria.split('-')
-                const [ah, am] = apertura.split(':')
-                const [ch, cm] = cierre.split(':')
-                const REVERSE_FORMATO_MAP: Record<string, string> = {
-                    "Eliminación directa": "eliminacion_directa",
-                    "Fase de grupos": "fase_grupos",
-                    "Todos contra todos": "todos_contra_todos"
-                }
-
-                reset({
-                    nombre: data.nombre,
-                    fecha_inicio: fi,
-                    fecha_fin: ff,
-                    formato: (REVERSE_FORMATO_MAP[data.formato] || data.formato) as any,
-                    zona: data.zona,
-                    dias_operativos: data.dias_operativos,
-                    apertura_h: ah,
-                    apertura_m: am,
-                    cierre_h: ch,
-                    cierre_m: cm,
-                    max_equipos: data.max_equipos,
-                    min_integrantes_por_equipo: data.min_integrantes_por_equipo,
-                    ida_y_vuelta: data.ida_y_vuelta,
-                    fase_final: data.fase_final || "cuartos",
-                    costo_inscripcion: data.costo_inscripcion,
-                    descripcion: data.descripcion || "",
-                    reglas: data.reglas || "",
-                })
-            } catch (err) {
-                setApiError(getErrorMessage(err) || "Error al cargar los datos del torneo")
-            } finally {
-                setIsFetching(false)
-            }
+        if (isError) {
+            setApiError("Error al cargar los datos del torneo")
         }
-        fetchTorneo()
-    }, [id, reset])
+    }, [isError])
+
+    useEffect(() => {
+        if (torneo) {
+            let fi = "";
+            let ff = "";
+            if (torneo.fecha_inicio) {
+                fi = new Date(torneo.fecha_inicio).toISOString().split('T')[0]
+            }
+            if (torneo.fecha_fin) {
+                ff = new Date(torneo.fecha_fin).toISOString().split('T')[0]
+            }
+            
+            const [apertura, cierre] = torneo.franja_horaria.split('-')
+            const [ah, am] = apertura.split(':')
+            const [ch, cm] = cierre.split(':')
+            const REVERSE_FORMATO_MAP: Record<string, string> = {
+                "Eliminación directa": "eliminacion_directa",
+                "Fase de grupos": "fase_grupos",
+                "Todos contra todos": "todos_contra_todos"
+            }
+
+            reset({
+                nombre: torneo.nombre,
+                fecha_inicio: fi,
+                fecha_fin: ff,
+                formato: (REVERSE_FORMATO_MAP[torneo.formato] || torneo.formato) as any,
+                zona: torneo.zona,
+                dias_operativos: torneo.dias_operativos,
+                apertura_h: ah,
+                apertura_m: am,
+                cierre_h: ch,
+                cierre_m: cm,
+                max_equipos: torneo.max_equipos,
+                min_integrantes_por_equipo: torneo.min_integrantes_por_equipo,
+                ida_y_vuelta: torneo.ida_y_vuelta,
+                fase_final: torneo.fase_final || "cuartos",
+                costo_inscripcion: torneo.costo_inscripcion,
+                descripcion: torneo.descripcion || "",
+                reglas: torneo.reglas || "",
+            })
+        }
+    }, [torneo, reset])
 
     const handleFormatoChange = (nuevoFormato: string) => {
         setValue("formato", nuevoFormato as any)
@@ -148,21 +149,24 @@ export default function EditarTorneoPage() {
         const franja_horaria = `${ah}:${data.apertura_m}-${ch}:${data.cierre_m}`
 
         try {
-            await TorneosService.update(Number(id), {
-                nombre: data.nombre,
-                fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
-                fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),
-                formato: data.formato,
-                zona: data.zona,
-                dias_operativos: data.dias_operativos,
-                franja_horaria,
-                max_equipos: data.max_equipos,
-                min_integrantes_por_equipo: data.min_integrantes_por_equipo,
-                costo_inscripcion: data.costo_inscripcion,
-                ida_y_vuelta: data.formato === "todos_contra_todos" ? data.ida_y_vuelta : false,
-                fase_final: data.formato === "fase_grupos" ? data.fase_final : null,
-                descripcion: data.descripcion,
-                reglas: data.reglas,
+            await updateTorneo.mutateAsync({
+                id: torneoId,
+                data: {
+                    nombre: data.nombre,
+                    fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
+                    fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),
+                    formato: data.formato,
+                    zona: data.zona,
+                    dias_operativos: data.dias_operativos,
+                    franja_horaria,
+                    max_equipos: data.max_equipos,
+                    min_integrantes_por_equipo: data.min_integrantes_por_equipo,
+                    costo_inscripcion: data.costo_inscripcion,
+                    ida_y_vuelta: data.formato === "todos_contra_todos" ? data.ida_y_vuelta : false,
+                    fase_final: data.formato === "fase_grupos" ? data.fase_final : null,
+                    descripcion: data.descripcion,
+                    reglas: data.reglas,
+                }
             })
             await Swal.fire({
                 title: "¡Torneo editado!",

@@ -1,37 +1,22 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { TorneosService, type TorneoData, type TopJugadorData, type VallaInvictaData } from "@/services/torneos.service"
+import { useState } from "react"
+import { type TorneoData } from "@/services/torneos.service"
 import { Loader2, Goal, ShieldCheck, Trophy, Medal, ChevronDown, ChevronUp } from "lucide-react"
+import { useTorneoTopGoleadores, useTorneoVallasInvictas } from "@/hooks/use-torneos-query"
 
 interface Props {
   torneo: TorneoData
 }
 
 export function EstadisticasTab({ torneo }: Props) {
-  const [goleadores, setGoleadores] = useState<TopJugadorData[]>([])
-  const [vallas, setVallas] = useState<VallaInvictaData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [showAllGoleadores, setShowAllGoleadores] = useState(false)
   const [showAllVallas, setShowAllVallas] = useState(false)
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const [g, v] = await Promise.all([
-          TorneosService.getTopJugadores(torneo.id, "goleadores", 50).catch(() => []),
-          TorneosService.getVallasInvictas(torneo.id, 50).catch(() => []),
-        ])
-        setGoleadores(g)
-        // Ordenar de menor a mayor goles recibidos
-        const vallasSorted = [...v].sort((a, b) => (a.goles_recibidos ?? 0) - (b.goles_recibidos ?? 0))
-        setVallas(vallasSorted)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    loadStats()
-  }, [torneo.id])
+  const { data: goleadores = [], isLoading: isLoadingGoleadores } = useTorneoTopGoleadores(torneo.id)
+  const { data: vallas = [], isLoading: isLoadingVallas } = useTorneoVallasInvictas(torneo.id)
+
+  const isLoading = isLoadingGoleadores || isLoadingVallas
 
   if (isLoading) {
     return (

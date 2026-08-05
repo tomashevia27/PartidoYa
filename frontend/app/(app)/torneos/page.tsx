@@ -7,6 +7,7 @@ import { Trophy, Calendar, Users, MapPin, Plus, Loader2, UserCheck, Settings } f
 import { Button } from "@/components/ui/button"
 import { TorneosService, type TorneoData } from "@/services/torneos.service"
 import { useAuthContext } from "@/components/auth-provider"
+import { useTorneos, useMisTorneos } from "@/hooks/use-torneos-query"
 
 type MisTorneosCategory = "Próximos" | "En curso" | "Finalizados" | "Cancelados"
 
@@ -14,37 +15,27 @@ export default function TorneosPage() {
     const [activeTab, setActiveTab] = useState<"disponibles" | "mis-torneos">("disponibles")
     const [misTorneosCategory, setMisTorneosCategory] = useState<MisTorneosCategory>("Próximos")
     const [misTorneosRole, setMisTorneosRole] = useState<"Todos" | "Organizados" | "Inscriptos">("Todos")
-    const [torneos, setTorneos] = useState<TorneoData[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    
     const { role } = useAuthContext()
+
+    const { 
+        data: torneosDisponibles = [], 
+        isLoading: isLoadingDisponibles 
+    } = useTorneos(true)
+    
+    const { 
+        data: misTorneos = [], 
+        isLoading: isLoadingMisTorneos 
+    } = useMisTorneos()
+
+    const torneos = activeTab === "disponibles" ? torneosDisponibles : misTorneos
+    const isLoading = activeTab === "disponibles" ? isLoadingDisponibles : isLoadingMisTorneos
 
     useEffect(() => {
         if (role === "admin" && activeTab === "disponibles") {
             setActiveTab("mis-torneos")
         }
-    }, [role])
-
-    useEffect(() => {
-        let isCurrent = true;
-        async function fetchTorneos() {
-            setIsLoading(true)
-            try {
-                if (activeTab === "disponibles") {
-                    const data = await TorneosService.getDisponibles()
-                    if (isCurrent) setTorneos(data)
-                } else {
-                    const data = await TorneosService.getMisTorneos()
-                    if (isCurrent) setTorneos(data)
-                }
-            } catch (error) {
-                console.error("Error fetching torneos:", error)
-            } finally {
-                if (isCurrent) setIsLoading(false)
-            }
-        }
-        fetchTorneos()
-        return () => { isCurrent = false; }
-    }, [activeTab])
+    }, [role, activeTab])
 
     const formatearPrecio = (precio: number) => {
         return new Intl.NumberFormat("es-AR", {

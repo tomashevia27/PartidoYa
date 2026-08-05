@@ -1,16 +1,24 @@
 import { getErrorMessage } from "@/lib/api-client"
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { ReservasService, type AgendaData, type AgendaSlot } from "@/services/reservas.service"
+import { type AgendaSlot } from "@/services/reservas.service"
+import { useCanchas } from "@/hooks/use-canchas-query"
+import { useAgendaQuery, useReservasMutations } from "@/hooks/use-reservas-query"
 
 export function useAgenda() {
-  const [canchas, setCanchas] = useState<CanchaData[]>([])
+  const { data: canchas = [], isLoading: isLoadingCanchas } = useCanchas("admin")
   const [canchaSeleccionada, setCanchaSeleccionada] = useState<number | "">("")
   const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0])
-  const [agenda, setAgenda] = useState<AgendaData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingAgenda, setIsLoadingAgenda] = useState(false)
+
+  useEffect(() => {
+    if (canchas.length > 0 && !canchaSeleccionada) {
+      setCanchaSeleccionada(canchas[0].id)
+    }
+  }, [canchas, canchaSeleccionada])
+
+  const { data: agenda = null, isLoading: isLoadingAgenda, refetch: recargarAgenda } = useAgendaQuery(canchaSeleccionada, fecha)
+
+  const { bloquearTurno, desbloquearTurno, cancelarReservaDueno } = useReservasMutations()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [slotSeleccionado, setSlotSeleccionado] = useState<AgendaSlot | null>(null)
@@ -18,49 +26,7 @@ export function useAgenda() {
   const [reprogramarDialogOpen, setReprogramarDialogOpen] = useState(false)
   const [slotReprogramar, setSlotReprogramar] = useState<AgendaSlot | null>(null)
 
-  useEffect(() => {
-    async function fetchCanchas() {
-      try {
-        const data = await CanchasService.getMisCanchas()
-        setCanchas(data)
-        if (data.length > 0) {
-          setCanchaSeleccionada(data[0].id)
-        }
-      } catch (e) {
-        console.warn("Error al cargar canchas:", e)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchCanchas()
-  }, [])
-
-  useEffect(() => {
-    if (!canchaSeleccionada || !fecha) return
-
-    async function fetchAgenda() {
-      setIsLoadingAgenda(true)
-      try {
-        const data = await ReservasService.getAgenda(canchaSeleccionada as number, fecha)
-        setAgenda(data)
-      } catch (e) {
-        console.warn("Error al cargar agenda:", e)
-        setAgenda(null)
-      } finally {
-        setIsLoadingAgenda(false)
-      }
-    }
-
-    fetchAgenda()
-  }, [canchaSeleccionada, fecha])
-
-  const recargarAgenda = () => {
-    if (canchaSeleccionada && fecha) {
-      ReservasService.getAgenda(canchaSeleccionada as number, fecha)
-        .then((data) => setAgenda(data))
-        .catch(() => {})
-    }
-  }
+  const isLoading = isLoadingCanchas
 
   const canchaActual = canchas.find((c) => c.id === canchaSeleccionada)
 
@@ -82,7 +48,7 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await ReservasService.bloquearTurno({
+      await bloquearTurno.mutateAsync({
         cancha_id: Number(canchaSeleccionada),
         fecha,
         horario: slot.horario,
@@ -94,7 +60,6 @@ export function useAgenda() {
         timer: 2000,
         showConfirmButton: false,
       })
-      recargarAgenda()
     } catch (error) {
       Swal.fire({
         title: "Error",
@@ -118,15 +83,14 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await ReservasService.desbloquearTurno(slot.partido_id)
+      await desbloquearTurno.mutateAsync(slot.partido_id!)
       await Swal.fire({
         title: "Turno desbloqueado",
-        text: "El turno vuelve a estar disponible.",
+        text: "El turno vuelve a estar disponible para reservas.",
         icon: "success",
         timer: 2000,
         showConfirmButton: false,
       })
-      recargarAgenda()
     } catch (error) {
       Swal.fire({
         title: "Error",
@@ -150,15 +114,14 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await ReservasService.cancelarReservaDueno(slot.partido_id)
+      await cancelarReservaDueno.mutateAsync(slot.partido_id!)
       await Swal.fire({
         title: "Reserva cancelada",
-        text: "El turno fue liberado exitosamente.",
+        text: "La reserva fue cancelada y el turno vuelve a estar disponible.",
         icon: "success",
         timer: 2000,
         showConfirmButton: false,
       })
-      recargarAgenda()
     } catch (error) {
       Swal.fire({
         title: "Error",

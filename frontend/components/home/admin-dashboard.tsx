@@ -5,44 +5,24 @@ import { useRouter } from "next/navigation"
 import { Calendar, BarChart3, Trophy, Star, MapPin, Plus, ChevronLeft, ChevronRight, Zap, Clock, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeroSection, FootballIcon } from "@/components/home/hero-section"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { TorneosService, type TorneoData } from "@/services/torneos.service"
-import { UsersService, type UserProfile } from "@/services/users.service"
+import { useProfile } from "@/hooks/use-profile-query"
+import { useCanchas } from "@/hooks/use-canchas-query"
+import { useTorneos, useMisTorneos } from "@/hooks/use-torneos-query"
+import { type TorneoData } from "@/services/torneos.service"
 
 export function useAdminDashboard() {
-  const [canchas, setCanchas] = useState<CanchaData[]>([])
-  const [adminTorneos, setAdminTorneos] = useState<TorneoData[]>([])
-  const [torneos, setTorneos] = useState<TorneoData[]>([])
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: userProfile = null } = useProfile()
+  const { data: canchas = [], isLoading: isLoadingCanchas } = useCanchas("admin")
+  const { data: torneosDispData = [], isLoading: isLoadingDisp } = useTorneos(true)
+  const { data: misTorneosData = [], isLoading: isLoadingMis } = useMisTorneos()
 
-  useEffect(() => {
-    async function fetchAdminData() {
-      try {
-        const [canchasData, misTorneosData, torneosDispData, profileData] = await Promise.all([
-          CanchasService.getMisCanchas(),
-          TorneosService.getMisTorneos(),
-          TorneosService.getDisponibles().catch(() => []),
-          UsersService.getProfile().catch(() => null)
-        ])
-        
-        const torneosOrganizados = misTorneosData.filter((t: TorneoData) => t.rol_usuario === "Organizador")
-        const torneosOrganizadosIds = new Set(torneosOrganizados.map((t: TorneoData) => t.id))
-        
-        setCanchas(canchasData)
-        setAdminTorneos(torneosOrganizados)
-        setTorneos(torneosDispData.filter((t: TorneoData) => !torneosOrganizadosIds.has(t.id)))
-        if (profileData) setUserProfile(profileData)
-      } catch (error) {
-        console.warn("Error fetching admin data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchAdminData()
-  }, [])
+  const torneosOrganizados = misTorneosData.filter((t: TorneoData) => t.rol_usuario === "Organizador")
+  const torneosOrganizadosIds = new Set(torneosOrganizados.map((t: TorneoData) => t.id))
+  const torneos = torneosDispData.filter((t: TorneoData) => !torneosOrganizadosIds.has(t.id))
+  
+  const isLoading = isLoadingCanchas || isLoadingDisp || isLoadingMis
 
-  return { canchas, adminTorneos, torneos, userProfile, isLoading }
+  return { canchas, adminTorneos: torneosOrganizados, torneos, userProfile, isLoading }
 }
 
 export function AdminDashboard() {

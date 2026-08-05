@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
-import { PartidosService, type PartidoData } from "@/services/partidos.service"
-import { ReservasService } from "@/services/reservas.service"
 import { API_URL } from "@/lib/api-client"
+import { usePartido, usePartidosMutations } from "@/hooks/use-partidos-query"
+import { useCancha, useCanchas } from "@/hooks/use-canchas-query"
+import { useTurnosQuery } from "@/hooks/use-reservas-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { PartidoFormSchema, type PartidoFormValues } from "@/lib/schemas"
@@ -19,11 +20,11 @@ function EditarPartidoForm() {
   const params = useParams()
   const partidoId = params.id as string
 
-  const [partido, setPartido] = useState<PartidoData | null>(null)
   const [cancha, setCancha] = useState<any>(null)
-  const [originalTamano, setOriginalTamano] = useState<number | null>(null)
   const [todasCanchas, setTodasCanchas] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  
+  const { data: partido = null, isLoading: isLoadingPartido, isError: isErrorPartido } = usePartido(partidoId)
+  const { updatePartido } = usePartidosMutations()
 
   const {
     register,
@@ -50,58 +51,44 @@ function EditarPartidoForm() {
   const watchTipo = watch("tipo")
   const watchHorario = watch("horario")
 
+  const { data: fetchedCancha = null } = useCancha(canchaIdParam || watchCanchaId || partido?.cancha_id || "")
+  const { data: todasCanchasData = [] } = useCanchas(null)
+  const { data: turnosData = null } = useTurnosQuery(cancha?.id as number, watchFecha, Number(partidoId))
+
   const [turnosDisponibles, setTurnosDisponibles] = useState<{ inicio: string; fin: string; estado: string }[]>([])
 
   useEffect(() => {
-    async function fetchPartido() {
-      try {
-        const data = await PartidosService.getById(partidoId)
-        setPartido(data)
-        
-        let maxCupos = undefined;
-        let originalTamano = null;
-
-        const resCancha = await fetch(`${API_URL}/canchas/${data.cancha_id}`)
-        if (resCancha.ok) {
-          const canchaData = await resCancha.json()
-          setCancha(canchaData)
-          setOriginalTamano(canchaData.tamano)
-          originalTamano = canchaData.tamano
-          maxCupos = (canchaData.tamano * 2) - 1;
-        }
-
-        reset({
-          cancha_id: data.cancha_id,
-          fecha: data.fecha,
-          horario: data.horario.substring(0, 5), // "HH:MM"
-          tipo: data.tipo as any,
-          cupos_disponibles: data.cupos_disponibles !== undefined && data.cupos_disponibles !== null ? data.cupos_disponibles : undefined,
-          descripcion: data.descripcion || "",
-          max_cupos: maxCupos
-        })
-
-        const resTodasCanchas = await fetch(`${API_URL}/canchas`)
-        if (resTodasCanchas.ok) {
-          setTodasCanchas(await resTodasCanchas.json())
-        }
-      } catch (error) {
-        Swal.fire("Error", "No se pudo cargar el partido", "error").then(() => router.back())
-      } finally {
-        setIsLoading(false)
-      }
+    if (isErrorPartido) {
+      Swal.fire("Error", "No se pudo cargar el partido", "error").then(() => router.back())
     }
-    fetchPartido()
-  }, [partidoId, router, reset])
+  }, [isErrorPartido, router])
 
   useEffect(() => {
-    if (watchCanchaId && todasCanchas.length > 0) {
-      const selected = todasCanchas.find((c: any) => c.id === Number(watchCanchaId))
-      if (selected && selected.id !== cancha?.id) {
-        setCancha(selected)
-        setValue("max_cupos", (selected.tamano * 2) - 1)
-      }
+    if (partido) {
+      reset({
+        cancha_id: partido.cancha_id,
+        fecha: partido.fecha,
+        horario: partido.horario.substring(0, 5), // "HH:MM"
+        tipo: partido.tipo as any,
+        cupos_disponibles: partido.cupos_disponibles !== undefined && partido.cupos_disponibles !== null ? partido.cupos_disponibles : undefined,
+        descripcion: partido.descripcion || "",
+        max_cupos: undefined // Se setea cuando carga la cancha
+      })
     }
-  }, [watchCanchaId, todasCanchas, cancha, setValue])
+  }, [partido, reset])
+
+  useEffect(() => {
+    if (todasCanchasData.length > 0) {
+      setTodasCanchas(todasCanchasData)
+    }
+  }, [todasCanchasData])
+
+  useEffect(() => {
+    if (fetchedCancha) {
+      setCancha(fetchedCancha)
+      setValue("max_cupos", (fetchedCancha.tamano * 2) - 1)
+    }
+  }, [fetchedCancha, setValue])
 
   useEffect(() => {
     if (!cancha) {
@@ -109,20 +96,16 @@ function EditarPartidoForm() {
       return
     }
 
-    if (watchFecha) {
-      ReservasService.getTurnos(cancha.id, watchFecha, Number(partidoId))
-        .then(data => {
-          const duracion = Number(cancha.duracion_turno) || 60
-          const turnos = data.slots.map(s => {
-            const [h, m] = s.horario.split(":").map(Number)
-            const d = new Date()
-            d.setHours(h, m + duracion, 0, 0)
-            return { inicio: s.horario, fin: d.toTimeString().slice(0, 5), estado: s.estado }
-          })
-          setTurnosDisponibles(turnos)
-        })
-        .catch(err => console.warn("Error al cargar turnos:", err))
-    } else {
+    if (watchFecha && turnosData) {
+      const duracion = Number(cancha.duracion_turno) || 60
+      const turnos = turnosData.slots.map(s => {
+        const [h, m] = s.horario.split(":").map(Number)
+        const d = new Date()
+        d.setHours(h, m + duracion, 0, 0)
+        return { inicio: s.horario, fin: d.toTimeString().slice(0, 5), estado: s.estado }
+      })
+      setTurnosDisponibles(turnos)
+    } else if (!watchFecha) {
       const turnos = []
       const [aperturaH, aperturaM] = cancha.hora_apertura.split(":").map(Number)
       const [cierreH, cierreM] = cancha.hora_cierre.split(":").map(Number)
@@ -145,17 +128,20 @@ function EditarPartidoForm() {
       }
       setTurnosDisponibles(turnos)
     }
-  }, [cancha, watchFecha, partidoId])
+  }, [cancha, watchFecha, partidoId, turnosData])
 
   const onSubmit = async (data: PartidoFormValues) => {
     try {
-      await PartidosService.update(partidoId, {
-        cancha_id: data.cancha_id,
-        fecha: data.fecha,
-        horario: data.horario,
-        tipo: data.tipo,
-        descripcion: data.descripcion || undefined,
-        cupos_disponibles: data.tipo === "abierto" ? data.cupos_disponibles : undefined
+      await updatePartido.mutateAsync({
+        id: partidoId,
+        data: {
+          cancha_id: data.cancha_id,
+          fecha: data.fecha,
+          horario: data.horario,
+          tipo: data.tipo,
+          descripcion: data.descripcion || undefined,
+          cupos_disponibles: data.tipo === "abierto" ? data.cupos_disponibles : undefined
+        }
       })
 
       Swal.fire({
@@ -174,7 +160,7 @@ function EditarPartidoForm() {
     }
   }
 
-  if (isLoading) {
+  if (isLoadingPartido) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">

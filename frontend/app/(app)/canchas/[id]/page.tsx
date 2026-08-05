@@ -5,10 +5,9 @@ import Link from "next/link"
 import { ArrowLeft, MapPin, Clock, Zap, DollarSign, CheckCircle, XCircle, Pencil, Trash, Calendar, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { CanchasService } from "@/services/canchas.service"
-import { API_URL } from "@/lib/api-client"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
+import { useCancha, useCanchasMutations } from "@/hooks/use-canchas-query"
 
 interface Cancha {
     id: number
@@ -32,29 +31,16 @@ export default function CanchaDetallePage() {
     const params = useParams()
     const router = useRouter()
     const { userId, role } = useAuthContext()
-    const [cancha, setCancha] = useState<Cancha | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const canchaId = params.id
+    
+    const canchaId = params.id as string
+    const { data: cancha, isLoading, isError } = useCancha(canchaId)
+    const { deleteCancha } = useCanchasMutations()
+
     useEffect(() => {
-        async function fetchCancha() {
-            try {
-                const res = await fetch(`${API_URL}/canchas/${canchaId}`)
-                if (res.ok) {
-                    const data = await res.json()
-                    setCancha(data)
-                } else {
-                    router.push("/canchas")
-                }
-            } catch (error) {
-                console.warn("Error fetching cancha:", error)
-            } finally {
-                setIsLoading(false)
-            }
+        if (isError) {
+            router.push("/canchas")
         }
-        if (canchaId) {
-            fetchCancha()
-        }
-    }, [canchaId, router])
+    }, [isError, router])
     const formatearPrecio = (precio: number) => {
         return new Intl.NumberFormat("es-AR", {
             style: "currency",
@@ -88,7 +74,7 @@ export default function CanchaDetallePage() {
 
         if (result.isConfirmed) {
             try {
-                await CanchasService.delete(canchaId as string)
+                await deleteCancha.mutateAsync(canchaId as string)
                 await Swal.fire(
                     "¡Eliminada!",
                     "La cancha ha sido eliminada exitosamente.",

@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
-import { PartidosService } from "@/services/partidos.service"
-import { ReservasService } from "@/services/reservas.service"
 import { API_URL } from "@/lib/api-client"
 import { getErrorMessage } from "@/lib/api-client"
+import { useCancha, useCanchas } from "@/hooks/use-canchas-query"
+import { useTurnosQuery } from "@/hooks/use-reservas-query"
+import { usePartidosMutations } from "@/hooks/use-partidos-query"
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -49,7 +50,32 @@ function NuevoPartidoForm() {
 
   const [turnosDisponibles, setTurnosDisponibles] = useState<{ inicio: string; fin: string; estado: string }[]>([])
 
-  
+  const { data: fetchedCancha = null, isLoading: isLoadingCancha, isError: isErrorCancha } = useCancha(canchaIdParam ? Number(canchaIdParam) : Number(watchCanchaId))
+  const { data: todasCanchasData = [] } = useCanchas(canchaIdParam ? null : "jugador")
+
+  useEffect(() => {
+    if (isErrorCancha) {
+      Swal.fire("Error", "Cancha no encontrada", "error").then(() => router.push("/home"))
+    }
+  }, [isErrorCancha, router])
+
+  useEffect(() => {
+    if (fetchedCancha) {
+      setCancha(fetchedCancha)
+      setValue("max_cupos", (fetchedCancha.tamano * 2) - 1)
+    } else {
+      setCancha(null)
+    }
+  }, [fetchedCancha, setValue])
+
+  useEffect(() => {
+    if (!canchaIdParam && todasCanchasData.length > 0) {
+      setTodasCanchas(todasCanchasData)
+    }
+  }, [todasCanchasData, canchaIdParam])
+
+  const { data: turnosData = null } = useTurnosQuery(cancha?.id as number, watchFecha)
+
   useEffect(() => {
     if (!cancha) {
       setTurnosDisponibles([])
@@ -57,20 +83,16 @@ function NuevoPartidoForm() {
       return
     }
 
-    if (watchFecha) {
-      ReservasService.getTurnos(cancha.id, watchFecha)
-        .then(data => {
-          const duracion = Number(cancha.duracion_turno) || 60
-          const turnos = data.slots.map(s => {
-            const [h, m] = s.horario.split(":").map(Number)
-            const d = new Date()
-            d.setHours(h, m + duracion, 0, 0)
-            return { inicio: s.horario, fin: d.toTimeString().slice(0, 5), estado: s.estado }
-          })
-          setTurnosDisponibles(turnos)
-        })
-        .catch(err => console.warn("Error al cargar turnos:", err))
-    } else {
+    if (watchFecha && turnosData) {
+      const duracion = Number(cancha.duracion_turno) || 60
+      const turnos = turnosData.slots.map(s => {
+        const [h, m] = s.horario.split(":").map(Number)
+        const d = new Date()
+        d.setHours(h, m + duracion, 0, 0)
+        return { inicio: s.horario, fin: d.toTimeString().slice(0, 5), estado: s.estado }
+      })
+      setTurnosDisponibles(turnos)
+    } else if (!watchFecha) {
       const turnos = []
       const [aperturaH, aperturaM] = cancha.hora_apertura.split(":").map(Number)
       const [cierreH, cierreM] = cancha.hora_cierre.split(":").map(Number)
@@ -94,60 +116,13 @@ function NuevoPartidoForm() {
       setTurnosDisponibles(turnos)
     }
     setValue("horario", "")
-  }, [cancha, watchFecha, setValue])
+  }, [cancha, watchFecha, turnosData, setValue])
 
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true)
-      try {
-        if (canchaIdParam) {
-          const res = await fetch(`${API_URL}/canchas/${canchaIdParam}`)
-          if (res.ok) {
-            const data = await res.json()
-            setCancha(data)
-            setValue("max_cupos", (data.tamano * 2) - 1)
-          } else {
-            Swal.fire("Error", "Cancha no encontrada", "error").then(() => router.push("/home"))
-          }
-        } else {
-          // Traer todas las canchas para que elija en el select
-          const res = await fetch(`${API_URL}/canchas/disponibles`) // O `/canchas` dependiendo de las rutas activas
-          const canchasDisponibles = res.ok ? await res.json() : []
-          // Por si el backend no tiene ruta `/disponibles`, intentamos `/canchas`
-          if (canchasDisponibles.detail === "Not Found" || !res.ok) {
-            const resAll = await fetch(`${API_URL}/canchas`)
-            if (resAll.ok) {
-              setTodasCanchas(await resAll.json())
-            }
-          } else {
-            setTodasCanchas(canchasDisponibles)
-          }
-        }
-      } catch (error) {
-        console.warn("Error fetching data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [canchaIdParam, router, setValue])
-
-  useEffect(() => {
-    if (!canchaIdParam && watchCanchaId) {
-      const selected = todasCanchas.find((c: any) => c.id === Number(watchCanchaId))
-      setCancha(selected || null)
-      if (selected) {
-        setValue("max_cupos", (selected.tamano * 2) - 1)
-      }
-    }
-  }, [watchCanchaId, todasCanchas, canchaIdParam, setValue])
-
-
+  const { createPartido } = usePartidosMutations()
 
   const onSubmit = async (data: PartidoFormValues) => {
     try {
-      await PartidosService.create({
+      await createPartido.mutateAsync({
         cancha_id: data.cancha_id,
         fecha: data.fecha,
         horario: data.horario,
@@ -180,7 +155,7 @@ function NuevoPartidoForm() {
     }
   }
 
-  if (isLoading) {
+  if (canchaIdParam && isLoadingCancha) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">

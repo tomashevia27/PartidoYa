@@ -5,9 +5,10 @@ import { useAuthContext } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, Legend } from "recharts"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { EstadisticasService, type KpiResumen, type ReservasPorPeriodoRespuesta, type OcupacionRespuesta, type DistribucionTipoRespuesta, type DistribucionModalidadRespuesta, type MapaCalorRespuesta, type ReservasPorDiaSemanaRespuesta, type IngresosRespuesta, type CancelacionesRespuesta, type ComparativaCanchasRespuesta } from "@/services/estadisticas.service"
+import { useCanchas } from "@/hooks/use-canchas-query"
+import { useEstadisticasDashboard } from "@/hooks/use-estadisticas-query"
 import { format, startOfMonth, startOfWeek, subMonths, startOfYear, endOfMonth } from "date-fns"
 
 const COLORS = ['#ea580c', '#c2410c', '#9a3412', '#7f1d1d', '#f97316'];
@@ -16,20 +17,11 @@ export default function EstadisticasPage() {
     const { role, isLoading: authLoading } = useAuthContext()
     const router = useRouter()
 
-    const [canchas, setCanchas] = useState<CanchaData[]>([])
     const [selectedCancha, setSelectedCancha] = useState<string>("todas")
     const [dateRange, setDateRange] = useState<string>("mes") // "hoy", "semana", "mes"
 
-    const [kpis, setKpis] = useState<KpiResumen | null>(null)
-    const [reservasPeriodo, setReservasPeriodo] = useState<ReservasPorPeriodoRespuesta | null>(null)
-    const [ocupacion, setOcupacion] = useState<OcupacionRespuesta | null>(null)
-    const [distTipo, setDistTipo] = useState<DistribucionTipoRespuesta | null>(null)
-    const [distModalidad, setDistModalidad] = useState<DistribucionModalidadRespuesta | null>(null)
-    const [mapaCalor, setMapaCalor] = useState<MapaCalorRespuesta | null>(null)
-    const [diasSemana, setDiasSemana] = useState<ReservasPorDiaSemanaRespuesta | null>(null)
-    const [ingresos, setIngresos] = useState<IngresosRespuesta | null>(null)
-    const [cancelaciones, setCancelaciones] = useState<CancelacionesRespuesta | null>(null)
-    const [comparativa, setComparativa] = useState<ComparativaCanchasRespuesta | null>(null)
+    const { data: canchas = [] } = useCanchas(role === "admin" ? "admin" : null)
+
     const [canchasComparar, setCanchasComparar] = useState<number[]>([])
 
     useEffect(() => {
@@ -37,8 +29,6 @@ export default function EstadisticasPage() {
             setCanchasComparar(canchas.map(c => c.id!))
         }
     }, [canchas, canchasComparar.length])
-
-    const [loading, setLoading] = useState(true)
 
     const formatFechaCorto = (fecha: string) => {
         if (!fecha || !fecha.includes('-')) return fecha;
@@ -52,84 +42,45 @@ export default function EstadisticasPage() {
         }
     }, [role, authLoading, router])
 
-    useEffect(() => {
-        async function fetchInitialData() {
-            try {
-                const canchasData = await CanchasService.getMisCanchas()
-                setCanchas(canchasData)
-            } catch (e) {
-                console.error("Error fetching canchas", e)
-            }
-        }
-        if (role === "admin") {
-            fetchInitialData()
-        }
-    }, [role])
+    let fechaDesde = ""
+    let fechaHasta = format(new Date(), "yyyy-MM-dd")
+    const hoy = new Date()
 
-    useEffect(() => {
-        async function fetchDashboardData() {
-            setLoading(true)
-            try {
-                let fechaDesde = ""
-                let fechaHasta = format(new Date(), "yyyy-MM-dd")
+    if (dateRange === "hoy") {
+        fechaDesde = format(hoy, "yyyy-MM-dd")
+    } else if (dateRange === "semana") {
+        fechaDesde = format(startOfWeek(hoy, { weekStartsOn: 1 }), "yyyy-MM-dd")
+    } else if (dateRange === "mes") {
+        fechaDesde = format(startOfMonth(hoy), "yyyy-MM-dd")
+    } else if (dateRange === "mes_pasado") {
+        const mesPasado = subMonths(hoy, 1)
+        fechaDesde = format(startOfMonth(mesPasado), "yyyy-MM-dd")
+        fechaHasta = format(endOfMonth(mesPasado), "yyyy-MM-dd")
+    } else if (dateRange === "ultimos_3_meses") {
+        fechaDesde = format(subMonths(hoy, 3), "yyyy-MM-dd")
+    } else if (dateRange === "este_ano") {
+        fechaDesde = format(startOfYear(hoy), "yyyy-MM-dd")
+    }
 
-                const hoy = new Date()
-                if (dateRange === "hoy") {
-                    fechaDesde = format(hoy, "yyyy-MM-dd")
-                } else if (dateRange === "semana") {
-                    fechaDesde = format(startOfWeek(hoy, { weekStartsOn: 1 }), "yyyy-MM-dd")
-                } else if (dateRange === "mes") {
-                    fechaDesde = format(startOfMonth(hoy), "yyyy-MM-dd")
-                } else if (dateRange === "mes_pasado") {
-                    const mesPasado = subMonths(hoy, 1)
-                    fechaDesde = format(startOfMonth(mesPasado), "yyyy-MM-dd")
-                    fechaHasta = format(endOfMonth(mesPasado), "yyyy-MM-dd")
-                } else if (dateRange === "ultimos_3_meses") {
-                    fechaDesde = format(subMonths(hoy, 3), "yyyy-MM-dd")
-                } else if (dateRange === "este_ano") {
-                    fechaDesde = format(startOfYear(hoy), "yyyy-MM-dd")
-                }
+    const canchaId = selectedCancha !== "todas" ? parseInt(selectedCancha) : undefined
 
-                const canchaId = selectedCancha !== "todas" ? parseInt(selectedCancha) : undefined
-
-                const [kpisData, reservasData, ocupacionData, tipoData, modalidadData, mapaData, diasData, ingresosData, cancelacionesData, comparativaData] = await Promise.all([
-                    EstadisticasService.getKpis(canchaId),
-                    EstadisticasService.getReservasPorPeriodo(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getOcupacion(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getDistribucionTipo(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getDistribucionModalidad(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getMapaCalor(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getReservasPorDiaSemana(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getIngresos(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getCancelaciones(fechaDesde, fechaHasta, canchaId),
-                    EstadisticasService.getComparativaCanchas(fechaDesde, fechaHasta)
-                ])
-
-                setKpis(kpisData)
-                setReservasPeriodo(reservasData)
-                setOcupacion(ocupacionData)
-                setDistTipo(tipoData)
-                setDistModalidad(modalidadData)
-                setMapaCalor(mapaData)
-                setDiasSemana(diasData)
-                setIngresos(ingresosData)
-                setCancelaciones(cancelacionesData)
-                setComparativa(comparativaData)
-            } catch (e) {
-                console.error("Error fetching dashboard data", e)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        if (role === "admin") {
-            fetchDashboardData()
-        }
-    }, [selectedCancha, dateRange, role])
+    const { 
+        kpis, 
+        reservasPeriodo, 
+        ocupacion, 
+        distTipo, 
+        distModalidad, 
+        mapaCalor, 
+        diasSemana, 
+        ingresos, 
+        cancelaciones, 
+        comparativa, 
+        isLoading 
+    } = useEstadisticasDashboard(fechaDesde, fechaHasta, canchaId, role)
 
     if (authLoading || role !== "admin") return null
 
-    const combinedData = reservasPeriodo?.datos.map((item, index) => ({
+    const combinedData = reservasPeriodo?.datos.map((item: any, index: number) => ({
         fecha: item.fecha,
         cantidad: item.cantidad,
         tasa: ocupacion?.datos[index]?.tasa || 0
@@ -149,8 +100,8 @@ export default function EstadisticasPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="todas">Todas mis canchas</SelectItem>
-                            {canchas.map(c => (
-                                <SelectItem key={c.id} value={c.id!.toString()}>{c.nombre}</SelectItem>
+                            {canchas.map((c: any) => (
+                                <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -458,23 +409,18 @@ export default function EstadisticasPage() {
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                         <CardTitle>Comparativa de Rendimiento por Cancha</CardTitle>
                                         <div className="flex flex-wrap gap-2">
-                                            {canchas.map(c => (
-                                                <button
+                                            {canchas.map((c: any) => (
+                                                <Button
                                                     key={c.id}
+                                                    variant={canchasComparar.includes(c.id) ? "default" : "outline"}
+                                                    size="sm"
                                                     onClick={() => {
-                                                        if (canchasComparar.includes(c.id!)) {
-                                                            if (canchasComparar.length > 1) {
-                                                                setCanchasComparar(prev => prev.filter(id => id !== c.id))
-                                                            }
+                                                        if (canchasComparar.includes(c.id)) {
+                                                            setCanchasComparar(canchasComparar.filter(id => id !== c.id))
                                                         } else {
-                                                            setCanchasComparar(prev => [...prev, c.id!])
+                                                            setCanchasComparar([...canchasComparar, c.id])
                                                         }
                                                     }}
-                                                    className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                                                        canchasComparar.includes(c.id!) 
-                                                            ? 'bg-primary text-primary-foreground border-primary' 
-                                                            : 'bg-transparent text-muted-foreground border-muted-foreground hover:border-primary'
-                                                    }`}
                                                 >
                                                     {c.nombre}
                                                 </button>

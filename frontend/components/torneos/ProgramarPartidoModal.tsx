@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { TorneosService, type PartidoTorneoData, type TorneoData } from "@/services/torneos.service"
 import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { useTorneoMutations } from "@/hooks/use-torneos-query"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
@@ -37,6 +38,8 @@ export function ProgramarPartidoModal({ partido, torneo, isOpen, onClose, onSucc
   const [isLoadingCanchas, setIsLoadingCanchas] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+
+  const { programarPartido } = useTorneoMutations()
 
   // Calcular franja horaria del torneo
   const [horaMin, horaMax] = (() => {
@@ -80,10 +83,13 @@ export function ProgramarPartidoModal({ partido, torneo, isOpen, onClose, onSucc
 
     setIsSubmitting(true)
     try {
-      await TorneosService.programarPartido(partido.id, {
-        cancha_id: Number(canchaId),
-        fecha,
-        horario: horario.length === 5 ? `${horario}:00` : horario,
+      await programarPartido.mutateAsync({
+        partidoId: partido.id,
+        payload: {
+          cancha_id: Number(canchaId),
+          fecha,
+          horario: horario.length === 5 ? `${horario}:00` : horario,
+        }
       })
       Swal.fire({
         title: "¡Partido programado!",

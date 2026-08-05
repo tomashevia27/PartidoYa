@@ -9,6 +9,7 @@ import {
   type RondaBracketData,
   type TorneoData,
 } from "@/services/torneos.service"
+import { useTorneoFixture, useTorneoMutations } from "@/hooks/use-torneos-query"
 import { Button } from "@/components/ui/button"
 import { CargarResultadoModal } from "./CargarResultadoModal"
 import { ProgramarPartidoModal } from "./ProgramarPartidoModal"
@@ -480,40 +481,21 @@ function BracketView({
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export function FixtureTab({ torneo, isOrganizer }: Props) {
-  const [partidos, setPartidos] = useState<PartidoTorneoData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const { data: partidos = [], isLoading } = useTorneoFixture(torneo.id)
+  const { generarFixture } = useTorneoMutations()
+
   const [selectedPartido, setSelectedPartido] = useState<PartidoTorneoData | null>(null)
   const [modalResultado, setModalResultado] = useState(false)
   const [modalProgramar, setModalProgramar] = useState(false)
 
   const hoy = new Date().toISOString().split("T")[0]
 
-  const loadFixture = async () => {
-    try {
-      const data = await TorneosService.getFixtureTorneo(torneo.id)
-      setPartidos(data)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadFixture()
-  }, [torneo.id])
-
   const handleGenerar = async () => {
-    setIsGenerating(true)
     try {
-      const data = await TorneosService.generarFixture(torneo.id)
-      setPartidos(data)
+      await generarFixture.mutateAsync(torneo.id)
       Swal.fire("¡Fixture generado!", "Los partidos fueron creados correctamente.", "success")
     } catch (error) {
       Swal.fire("Error", getErrorMessage(error) || "No se pudo generar el fixture", "error")
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -533,8 +515,8 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
           Los partidos se programarán cuando el organizador lo decida.
         </p>
         {isOrganizer && torneo.estado === "Abierto para inscripción" && (
-          <Button onClick={handleGenerar} disabled={isGenerating}>
-            {isGenerating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generando...</> : "Generar Fixture"}
+          <Button onClick={handleGenerar} disabled={generarFixture.isPending}>
+            {generarFixture.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generando...</> : "Generar Fixture"}
           </Button>
         )}
       </div>
@@ -614,14 +596,14 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
         isOpen={modalResultado}
         partido={selectedPartido}
         onClose={() => { setModalResultado(false); setSelectedPartido(null) }}
-        onSuccess={loadFixture}
+        onSuccess={() => {}} // react-query auto-invalidates if we used mutation in the modal
       />
       <ProgramarPartidoModal
         isOpen={modalProgramar}
         partido={selectedPartido}
         torneo={torneo}
         onClose={() => { setModalProgramar(false); setSelectedPartido(null) }}
-        onSuccess={loadFixture}
+        onSuccess={() => {}} // react-query auto-invalidates if we used mutation in the modal
       />
     </div>
   )

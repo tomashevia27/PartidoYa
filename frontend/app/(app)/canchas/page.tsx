@@ -7,8 +7,7 @@ import { useRouter } from "next/navigation"
 import { MapPin, Clock, Zap, DollarSign, Search, Filter, Trophy, Users, Star, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { API_URL } from "@/lib/api-client"
+import { useCanchas } from "@/hooks/use-canchas-query"
 
 // Football SVG Component
 function FootballIcon({ className }: { className?: string }) {
@@ -22,37 +21,16 @@ function FootballIcon({ className }: { className?: string }) {
 }
 
 export default function CanchasPage() {
-    const [canchas, setCanchas] = useState<CanchaData[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const { role } = useAuthContext()
+    
+    const { data: canchas = [], isLoading } = useCanchas(role)
+
     const [searchTerm, setSearchTerm] = useState("")
     const [showFilters, setShowFilters] = useState(false)
     const [filtroSuperficie, setFiltroSuperficie] = useState<string>("")
     const [filtroTamano, setFiltroTamano] = useState<string>("")
     const [filtroIluminacion, setFiltroIluminacion] = useState<string>("todas")
     const { role } = useAuthContext()
-    const router = useRouter()
-
-    useEffect(() => {
-        async function fetchCanchas() {
-            try {
-                if (role === "admin") {
-                    const data = await CanchasService.getMisCanchas()
-                    setCanchas(data)
-                } else {
-                    const res = await fetch(`${API_URL}/canchas/disponibles`)
-                    if (res.ok) {
-                        const data = await res.json()
-                        setCanchas(data)
-                    }
-                }
-            } catch (error) {
-                console.warn("Error fetching canchas:", error)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-        fetchCanchas()
-    }, [role])
 
     const formatearPrecio = (precio: number) => {
         return new Intl.NumberFormat("es-AR", {

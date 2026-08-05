@@ -4,86 +4,40 @@ import Link from "next/link"
 import { Calendar, Trophy, Star, MapPin, Plus, ChevronRight, Clock, Users, Frown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeroSection } from "@/components/home/hero-section"
-import { PartidosService, type PartidoData, type PartidoDisponibleFilters, type FiltrosDisponiblesData } from "@/services/partidos.service"
-import { UsersService, type UserProfile } from "@/services/users.service"
-import { TorneosService, type TorneoData } from "@/services/torneos.service"
+import { type PartidoData, type PartidoDisponibleFilters } from "@/services/partidos.service"
+import { type TorneoData } from "@/services/torneos.service"
+import { useProfile } from "@/hooks/use-profile-query"
+import { usePartidosDisponibles, useFiltrosDisponibles } from "@/hooks/use-partidos-query"
+import { useTorneos, useMisTorneos } from "@/hooks/use-torneos-query"
 
 export function usePlayerDashboard() {
-  const [partidos, setPartidos] = useState<PartidoData[]>([])
-  const [torneos, setTorneos] = useState<TorneoData[]>([])
-  const [misTorneos, setMisTorneos] = useState<TorneoData[]>([])
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const { data: userProfile = null } = useProfile()
+  const { data: torneos = [] } = useTorneos(true)
+  const { data: misTorneos = [] } = useMisTorneos()
+
   const [userZona, setUserZona] = useState<string>("")
   const [isUsingUserZone, setIsUsingUserZone] = useState(true)
 
   const [filtroZona, setFiltroZona] = useState<string>("")
   const [filtroModalidad, setFiltroModalidad] = useState<string>("")
   const [filtroFecha, setFiltroFecha] = useState<string>("")
-  const [filtrosOpciones, setFiltrosOpciones] = useState<FiltrosDisponiblesData | null>(null)
-
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const profile = await UsersService.getProfile()
-        setUserProfile(profile)
-        if (profile.zona) {
-          setUserZona(profile.zona)
-          setFiltroZona(profile.zona)
-        }
-      } catch (e) {
-        console.warn("Error al cargar perfil:", e)
-      }
-    }
-    async function loadFiltros() {
-      try {
-        const opciones = await PartidosService.getFiltrosDisponibles()
-        setFiltrosOpciones(opciones)
-      } catch (e) {
-        console.warn("Error al cargar filtros dinámicos:", e)
-      }
-    }
-    async function fetchTorneos() {
-      try {
-        const [dataDisp, dataMis] = await Promise.all([
-          TorneosService.getDisponibles(),
-          TorneosService.getMisTorneos()
-        ])
-        setTorneos(dataDisp)
-        setMisTorneos(dataMis)
-      } catch (e) {
-        console.warn("Error al cargar torneos:", e)
-      }
-    }
-    loadProfile()
-    loadFiltros()
-    fetchTorneos()
-  }, [])
-
-  const fetchPartidos = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const filters: PartidoDisponibleFilters = {}
-      if (filtroZona) filters.zona = filtroZona
-      if (filtroModalidad) filters.modalidad = filtroModalidad
-      if (filtroFecha) filters.fecha = filtroFecha
-
-      const data = await PartidosService.getDisponibles(filters)
-      setPartidos(data)
-    } catch (err) {
-      console.warn("Error al cargar partidos:", err)
-      setPartidos([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filtroZona, filtroModalidad, filtroFecha])
+  
+  const { data: filtrosOpciones = null } = useFiltrosDisponibles()
 
   useEffect(() => {
-    if (userZona || !isUsingUserZone) {
-      fetchPartidos()
+    if (userProfile?.zona && !userZona) {
+      setUserZona(userProfile.zona)
+      setFiltroZona(userProfile.zona)
     }
-  }, [fetchPartidos, userZona, isUsingUserZone])
+  }, [userProfile, userZona])
+
+  const currentFilters: PartidoDisponibleFilters = {
+    zona: filtroZona || undefined,
+    modalidad: filtroModalidad || undefined,
+    fecha: filtroFecha || undefined,
+  }
+
+  const { data: partidos = [], isLoading } = usePartidosDisponibles(currentFilters)
 
   useEffect(() => {
     if (filtroZona !== userZona) {

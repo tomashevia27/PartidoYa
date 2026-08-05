@@ -11,10 +11,10 @@ import {
     RefreshCw, Layers
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TorneosService } from "@/services/torneos.service"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
+import { useTorneoMutations } from "@/hooks/use-torneos-query"
 
 // ─── Constantes de opciones por formato ───────────────────────────────────────
 const ED_OPCIONES = [2, 4, 8, 16, 32, 64]
@@ -37,6 +37,8 @@ export default function CrearTorneoPage() {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
     const [apiError, setApiError] = useState("")
+
+    const { createTorneo } = useTorneoMutations()
 
     const {
         register,
@@ -96,7 +98,7 @@ export default function CrearTorneoPage() {
         const franja_horaria = `${ah}:${data.apertura_m}-${ch}:${data.cierre_m}`
 
         try {
-            await TorneosService.create({
+            await createTorneo.mutateAsync({
                 nombre: data.nombre,
                 fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
                 fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),

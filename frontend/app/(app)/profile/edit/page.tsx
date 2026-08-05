@@ -22,12 +22,14 @@ import { UsersService } from "@/services/users.service"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ProfileEditSchema, type ProfileEditValues } from "@/lib/schemas"
+import { useProfile, useProfileMutations } from "@/hooks/use-profile-query"
 
 
 export default function EditProfilePage() {
   const router = useRouter()
   const { userId } = useAuthContext()
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: profile, isLoading: isLoadingProfile } = useProfile()
+  const { updateProfile } = useProfileMutations()
   const {
     register,
     handleSubmit,
@@ -54,32 +56,21 @@ export default function EditProfilePage() {
   const [notifMensajes, setNotifMensajes] = useState(true)
 
   useEffect(() => {
-    async function loadProfile() {
-      if (!userId) return
-
-      try {
-        const data = await UsersService.getProfile()
-        reset({
-          nombre: data.nombre,
-          apellido: data.apellido,
-          edad: data.edad,
-          genero: data.genero,
-          zona: data.zona,
-          password: "",
-        })
-        const avatarUrl =
-          data.foto_perfil ||
-          `https://ui-avatars.com/api/?name=${data.nombre}+${data.apellido}&background=FF6B4A&color=fff&size=200`
-        setAvatarPreview(avatarUrl)
-      } catch (error) {
-        console.warn("Error al cargar el perfil:", error)
-      } finally {
-        setIsLoading(false)
-      }
+    if (profile) {
+      reset({
+        nombre: profile.nombre,
+        apellido: profile.apellido,
+        edad: profile.edad,
+        genero: profile.genero,
+        zona: profile.zona,
+        password: "",
+      })
+      const avatarUrl =
+        profile.foto_perfil ||
+        `https://ui-avatars.com/api/?name=${profile.nombre}+${profile.apellido}&background=FF6B4A&color=fff&size=200`
+      setAvatarPreview(avatarUrl)
     }
-
-    loadProfile()
-  }, [userId])
+  }, [profile, reset])
 
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -117,7 +108,7 @@ export default function EditProfilePage() {
         fotoUrl = avatarPreview
       }
 
-      await UsersService.updateProfile({
+      await updateProfile.mutateAsync({
         nombre: data.nombre,
         apellido: data.apellido,
         edad: data.edad,
@@ -145,7 +136,7 @@ export default function EditProfilePage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoadingProfile) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-center min-h-[400px]">

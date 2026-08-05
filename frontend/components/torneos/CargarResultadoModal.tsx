@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Swal from "sweetalert2"
 import { Loader2, AlertCircle } from "lucide-react"
 import { getErrorMessage } from "@/lib/api-client"
+import { useTorneoMutations } from "@/hooks/use-torneos-query"
 
 interface Props {
   partido: PartidoTorneoData | null
@@ -57,6 +58,8 @@ export function CargarResultadoModal({ partido, isOpen, onClose, onSuccess }: Pr
     })
   }
 
+  const { cargarResultado } = useTorneoMutations()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg("")
@@ -97,14 +100,18 @@ export function CargarResultadoModal({ partido, isOpen, onClose, onSuccess }: Pr
     try {
       const estadisticasPayload = Object.values(stats).filter(s => s.goles > 0 || s.amarillas > 0 || s.rojas > 0);
       
-      await TorneosService.cargarResultadoPartido(partido.id, {
-        goles_local: Number(golesLocal),
-        goles_visitante: Number(golesVisitante),
-        estadisticas_jugadores: estadisticasPayload
+      await cargarResultado.mutateAsync({
+        partidoId: partido.id,
+        payload: {
+          goles_local: Number(golesLocal),
+          goles_visitante: Number(golesVisitante),
+          estadisticas_jugadores: estadisticasPayload
+        }
       })
 
       Swal.fire({
         title: "¡Resultado guardado!",
+        text: "El partido finalizó y las estadísticas se actualizaron.",
         icon: "success",
         timer: 2000,
         showConfirmButton: false

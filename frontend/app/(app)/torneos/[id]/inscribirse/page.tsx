@@ -5,18 +5,20 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Trophy, ArrowLeft, Loader2, AlertCircle, Users, Shield, Image as ImageIcon, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TorneosService, type TorneoData } from "@/services/torneos.service"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { InscripcionEquipoSchema, type InscripcionEquipoValues } from "@/lib/schemas"
+import { useTorneo, useTorneoMutations } from "@/hooks/use-torneos-query"
 
 export default function InscripcionTorneoPage() {
     const { id } = useParams()
     const router = useRouter()
-    const [torneo, setTorneo] = useState<TorneoData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
+    
+    const { data: torneo, isLoading, isError } = useTorneo(Number(id))
+    const { inscribirEquipo } = useTorneoMutations()
+
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errorMsg, setErrorMsg] = useState("")
 
@@ -41,27 +43,23 @@ export default function InscripcionTorneoPage() {
     })
 
     useEffect(() => {
-        async function fetchTorneo() {
-            try {
-                const data = await TorneosService.getById(Number(id))
-                setTorneo(data)
-                
-                if (data.estado !== "Abierto para inscripción") {
-                    setErrorMsg("Este torneo no está abierto para nuevas inscripciones.")
-                } else if (data.equipos_inscriptos >= data.max_equipos) {
-                    setErrorMsg("Este torneo ya completó su cupo máximo de equipos.")
-                } else {
-                    setValue("min_jugadores", data.min_integrantes_por_equipo || 5)
-                    setValue("max_jugadores", (data.min_integrantes_por_equipo || 5) * 2)
-                }
-            } catch (err) {
-                setErrorMsg(getErrorMessage(err) || "Torneo no encontrado")
-            } finally {
-                setIsLoading(false)
+        if (isError) {
+            setErrorMsg("Torneo no encontrado")
+        }
+    }, [isError])
+
+    useEffect(() => {
+        if (torneo) {
+            if (torneo.estado !== "Abierto para inscripción") {
+                setErrorMsg("Este torneo no está abierto para nuevas inscripciones.")
+            } else if (torneo.equipos_inscriptos >= torneo.max_equipos) {
+                setErrorMsg("Este torneo ya completó su cupo máximo de equipos.")
+            } else {
+                setValue("min_jugadores", torneo.min_integrantes_por_equipo || 5)
+                setValue("max_jugadores", (torneo.min_integrantes_por_equipo || 5) * 2)
             }
         }
-        fetchTorneo()
-    }, [id])
+    }, [torneo, setValue])
 
     const onSubmit = async (data: InscripcionEquipoValues) => {
         if (!torneo) return
@@ -94,7 +92,7 @@ export default function InscripcionTorneoPage() {
                 jugadores: JSON.stringify(data.jugadores)
             }
 
-            await TorneosService.inscribirEquipo(torneo.id, payload)
+            await inscribirEquipo.mutateAsync({ id: torneo.id, data: payload })
 
             await Swal.fire({
                 title: "¡Reserva iniciada!",

@@ -2,18 +2,22 @@ import { getErrorMessage } from "@/lib/api-client"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Swal from "sweetalert2"
-import { PartidosService, type PartidoData } from "@/services/partidos.service"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { UsersService, type UserProfile } from "@/services/users.service"
+import { type UserProfile } from "@/services/users.service"
+import { usePartido, usePartidosMutations } from "@/hooks/use-partidos-query"
+import { useCancha } from "@/hooks/use-canchas-query"
+import { useAuthContext } from "@/components/auth-provider"
 
 export function usePartidoDetalle(partidoId: string) {
   const router = useRouter()
+  const { user: currentUser } = useAuthContext()
 
-  const [partido, setPartido] = useState<PartidoData | null>(null)
-  const [cancha, setCancha] = useState<CanchaData | null>(null)
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
-  
-  const [isLoading, setIsLoading] = useState(true)
+  const { data: partido = null, isLoading: isLoadingPartido, isError: isErrorPartido } = usePartido(partidoId)
+  const { data: cancha = null, isLoading: isLoadingCancha } = useCancha(partido?.cancha_id as number)
+
+  const { cancelPartido, inscribirse, bajarse } = usePartidosMutations()
+
+  const isLoading = isLoadingPartido || isLoadingCancha
+
   const [isCancelling, setIsCancelling] = useState(false)
   const [isJoining, setIsJoining] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
@@ -21,37 +25,10 @@ export function usePartidoDetalle(partidoId: string) {
   const [selectedPlayer, setSelectedPlayer] = useState<UserProfile | null>(null)
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const pData = await PartidosService.getById(partidoId)
-        setPartido(pData)
-
-        // Luego de obtener el partido, buscamos los detalles de la cancha (ahora con Zod)
-        try {
-          const cData = await CanchasService.getById(pData.cancha_id)
-          setCancha(cData)
-        } catch (e) {
-          console.warn("Error al cargar cancha:", e)
-        }
-
-        try {
-          const user = await UsersService.getProfile()
-          setCurrentUser(user)
-        } catch (e) {
-          // No user logged in or error
-        }
-      } catch (error) {
-        console.warn("Error al cargar detalles:", error)
-        router.push("/profile")
-      } finally {
-        setIsLoading(false)
-      }
+    if (isErrorPartido) {
+      router.push("/profile")
     }
-
-    if (partidoId) {
-      loadData()
-    }
-  }, [partidoId, router])
+  }, [isErrorPartido, router])
 
   const confirmedCount = partido ? partido.cantidad_jugadores - partido.cupos_disponibles : 0
   const spotsLeft = partido ? partido.cupos_disponibles : 0
@@ -86,15 +63,13 @@ export function usePartidoDetalle(partidoId: string) {
     if (result.isConfirmed) {
       setIsCancelling(true)
       try {
-        await PartidosService.cancelar(partido.id)
+        await cancelPartido.mutateAsync(partido.id)
         await Swal.fire({
           title: cancelacionAnticipada ? "Reserva cancelada" : "Baja confirmada",
           text: cancelacionAnticipada ? "Reserva cancelada con éxito. En las próximas horas la seña será reembolsada." : "",
           icon: cancelacionAnticipada ? "success" : "info",
           confirmButtonColor: "#FF6B4A"
         })
-        const updated = await PartidosService.getById(partidoId)
-        setPartido(updated)
       } catch (error) {
         Swal.fire("Error", getErrorMessage(error) || "No se pudo cancelar el partido", "error")
       } finally {
@@ -119,7 +94,7 @@ export function usePartidoDetalle(partidoId: string) {
     if (result.isConfirmed) {
       setIsJoining(true)
       try {
-        await PartidosService.inscribirse(partido.id)
+        await inscribirse.mutateAsync(partido.id)
 
         await Swal.fire({
           title: "¡Reserva iniciada!",
@@ -136,9 +111,6 @@ export function usePartidoDetalle(partidoId: string) {
           timer: 2000,
           showConfirmButton: false
         })
-
-        const updated = await PartidosService.getById(partidoId)
-        setPartido(updated)
       } catch (error) {
         Swal.fire("Error", getErrorMessage(error) || "No se pudo completar la inscripción", "error")
       } finally {
@@ -170,15 +142,13 @@ export function usePartidoDetalle(partidoId: string) {
     if (result.isConfirmed) {
       setIsLeaving(true)
       try {
-        await PartidosService.bajarse(partido.id)
+        await bajarse.mutateAsync(partido.id)
         await Swal.fire({
           title: cancelacionAnticipada ? "Inscripción cancelada" : "Baja confirmada",
           text: cancelacionAnticipada ? "Inscripción cancelada con éxito. En las próximas horas la seña será reembolsada." : "",
           icon: cancelacionAnticipada ? "success" : "info",
           confirmButtonColor: "#FF6B4A"
         })
-        const updated = await PartidosService.getById(partidoId)
-        setPartido(updated)
       } catch (error) {
         Swal.fire("Error", getErrorMessage(error) || "No se pudo completar la baja", "error")
       } finally {

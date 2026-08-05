@@ -17,22 +17,23 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuthContext } from "@/components/auth-provider"
-import { CanchasService } from "@/services/canchas.service"
 import { UsersService } from "@/services/users.service"
-import { API_URL } from "@/lib/api-client"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
 import { CanchaFormSchema, type CanchaFormValues } from "@/lib/schemas"
+import { useCancha, useCanchasMutations } from "@/hooks/use-canchas-query"
 
 export default function EditarCanchaPage() {
   const router = useRouter()
   const params = useParams()
   const canchaId = params.id as string
-  const { userId, role } = useAuthContext()
+
+  const { data: cancha, isLoading: isLoadingCancha, isError } = useCancha(canchaId)
+  const { updateCancha } = useCanchasMutations()
+
   const [isLoading, setIsLoading] = useState(false)
-  const [isFetching, setIsFetching] = useState(true)
-  const [fotoActual, setFotoActual] = useState<string | null>(null)
   const [foto, setFoto] = useState<File | null>(null)
+  const [fotoUrlPrevia, setFotoUrlPrevia] = useState<string | undefined>()
 
   const {
     register,
@@ -43,59 +44,71 @@ export default function EditarCanchaPage() {
     formState: { errors },
   } = useForm<CanchaFormValues>({
     resolver: zodResolver(CanchaFormSchema),
+    defaultValues: {
+      nombre: "",
+      tipo_superficie: "",
+      tamano: undefined,
+      iluminacion: false,
+      zona: "",
+      direccion: "",
+      precio_por_turno: undefined,
+      dias_operativos: 31,
+      apertura_h: "",
+      apertura_m: undefined,
+      cierre_h: "",
+      cierre_m: undefined,
+    }
   })
 
   useEffect(() => {
-    async function fetchCancha() {
-      try {
-        const res = await fetch(`${API_URL}/canchas/${canchaId}`)
-        if (res.ok) {
-          const data = await res.json()
+    if (isError) {
+      Swal.fire("Error", "Cancha no encontrada", "error").then(() => router.back())
+    }
+  }, [isError, router])
 
-          // Verify owner
-          if (role !== "admin" || String(userId) !== String(data.propietario_id)) {
-            router.push(`/canchas/${canchaId}`)
-            return
-          }
+  useEffect(() => {
+    if (cancha) {
+      let apertura_h = "", apertura_m = undefined
+      let cierre_h = "", cierre_m = undefined
 
-          const [apertura_h, apertura_m] = data.hora_apertura.split(":")
-          const [cierre_h, cierre_m] = data.hora_cierre.split(":")
+      if (cancha.hora_apertura) {
+        const [h, m] = cancha.hora_apertura.split(":")
+        apertura_h = h
+        apertura_m = parseInt(m) as any
+      }
 
-          reset({
-            nombre: data.nombre,
-            tipo_superficie: data.tipo_superficie,
-            tamano: data.tamano,
-            iluminacion: data.iluminacion,
-            zona: data.zona,
-            direccion: data.direccion,
-            precio_por_turno: data.precio_por_turno,
-            dias_operativos: data.dias_operativos,
-            apertura_h,
-            apertura_m,
-            cierre_h,
-            cierre_m,
-          })
-          setFotoActual(data.fotos)
-        } else {
-          router.push("/canchas")
-        }
-      } catch (error) {
-        console.warn("Error fetching cancha:", error)
-        router.push("/canchas")
-      } finally {
-        setIsFetching(false)
+      if (cancha.hora_cierre) {
+        const [h, m] = cancha.hora_cierre.split(":")
+        cierre_h = h
+        cierre_m = parseInt(m) as any
+      }
+
+      reset({
+        nombre: cancha.nombre,
+        tipo_superficie: cancha.tipo_superficie,
+        tamano: cancha.tamano,
+        iluminacion: cancha.iluminacion,
+        zona: cancha.zona,
+        direccion: cancha.direccion,
+        precio_por_turno: cancha.precio_por_turno,
+        dias_operativos: cancha.dias_operativos,
+        apertura_h,
+        apertura_m,
+        cierre_h,
+        cierre_m,
+      })
+
+      if (cancha.fotos) {
+        setFotoUrlPrevia(cancha.fotos)
       }
     }
-    if (canchaId && userId) {
-      fetchCancha()
-    }
-  }, [canchaId, userId, role, router])
+  }, [cancha, reset])
 
   async function onSubmit(data: CanchaFormValues) {
     setIsLoading(true)
 
     try {
-      let fotoUrl = fotoActual
+      let fotoUrl = fotoUrlPrevia
 
       if (foto) {
         try {
@@ -115,36 +128,34 @@ export default function EditarCanchaPage() {
       const hora_apertura = `${data.apertura_h.padStart(2, '0')}:${data.apertura_m}`
       const hora_cierre = `${data.cierre_h.padStart(2, '0')}:${data.cierre_m}`
 
-      await CanchasService.update(canchaId, {
-        nombre: data.nombre,
-        tipo_superficie: data.tipo_superficie,
-        tamano: data.tamano,
-        iluminacion: data.iluminacion,
-        zona: data.zona,
-        direccion: data.direccion,
-        precio_por_turno: data.precio_por_turno,
-        dias_operativos: data.dias_operativos,
-        hora_apertura,
-        hora_cierre,
-        fotos: fotoUrl || undefined,
+      await updateCancha.mutateAsync({
+        id: canchaId,
+        data: {
+          nombre: data.nombre,
+          tipo_superficie: data.tipo_superficie,
+          tamano: data.tamano,
+          iluminacion: data.iluminacion,
+          zona: data.zona,
+          direccion: data.direccion,
+          precio_por_turno: data.precio_por_turno,
+          dias_operativos: data.dias_operativos,
+          hora_apertura,
+          hora_cierre,
+          fotos: fotoUrl,
+        }
       })
 
       await Swal.fire({
         title: "¡Actualizada!",
-        text: "La información de la cancha ha sido modificada con éxito.",
+        text: "Los datos de la cancha fueron guardados.",
         icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
+        timer: 2000,
+        showConfirmButton: false
       })
-
-      router.push(`/canchas/${canchaId}`)
-    } catch (error) {
-      Swal.fire({
-        title: "No se pudo actualizar",
-        text: error instanceof Error ? getErrorMessage(error) : "Error al procesar la solicitud.",
-        icon: "error",
-        confirmButtonColor: "#FF6B4A",
-      })
+      router.back()
+    } catch (error: any) {
+      console.error(error)
+      Swal.fire("Error", getErrorMessage(error) || "Revisá los datos ingresados.", "error")
     } finally {
       setIsLoading(false)
     }

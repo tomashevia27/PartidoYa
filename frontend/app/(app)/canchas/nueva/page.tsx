@@ -23,12 +23,15 @@ import { UsersService } from "@/services/users.service"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
 import { CanchaFormSchema, type CanchaFormValues } from "@/lib/schemas"
+import { useCanchasMutations } from "@/hooks/use-canchas-query"
 
 export default function NuevaCanchaPage() {
   const router = useRouter()
   const { userId } = useAuthContext()
   const [isLoading, setIsLoading] = useState(false)
   const [foto, setFoto] = useState<File | null>(null)
+
+  const { createCancha } = useCanchasMutations()
 
   const {
     register,
@@ -78,7 +81,7 @@ export default function NuevaCanchaPage() {
       const hora_apertura = `${data.apertura_h.padStart(2, '0')}:${data.apertura_m}`
       const hora_cierre = `${data.cierre_h.padStart(2, '0')}:${data.cierre_m}`
 
-      await CanchasService.create({
+      await createCancha.mutateAsync({
         nombre: data.nombre,
         tipo_superficie: data.tipo_superficie,
         tamano: data.tamano,

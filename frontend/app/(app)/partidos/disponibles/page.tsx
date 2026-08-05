@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { useAuthContext } from "@/components/auth-provider"
 import { UsersService, type UserProfile } from "@/services/users.service"
 import { PartidosService, type PartidoData, type PartidoDisponibleFilters, type FiltrosDisponiblesData } from "@/services/partidos.service"
+import { usePartidosDisponibles, useFiltrosDisponibles } from "@/hooks/use-partidos-query"
 
 
 
@@ -38,10 +39,7 @@ function FootballIcon({ className }: { className?: string }) {
 
 export default function PartidosDisponiblesPage() {
 
-  const [partidos, setPartidos] = useState<PartidoData[]>([])
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false)
@@ -50,7 +48,6 @@ export default function PartidosDisponiblesPage() {
   const [filtroFecha, setFiltroFecha] = useState<string>("")
   const [userZona, setUserZona] = useState<string>("")
   const [isUsingUserZone, setIsUsingUserZone] = useState(true)
-  const [filtrosOpciones, setFiltrosOpciones] = useState<FiltrosDisponiblesData | null>(null)
 
   // Load user profile to get their zone
   useEffect(() => {
@@ -66,45 +63,20 @@ export default function PartidosDisponiblesPage() {
         console.warn("Error al cargar perfil:", e)
       }
     }
-    async function loadFiltros() {
-      try {
-        const opciones = await PartidosService.getFiltrosDisponibles()
-        setFiltrosOpciones(opciones)
-      } catch (e) {
-        console.warn("Error al cargar filtros dinámicos:", e)
-      }
-    }
     loadProfile()
-    loadFiltros()
   }, [])
 
-  // Fetch partidos whenever filters change
-  const fetchPartidos = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const filters: PartidoDisponibleFilters = {}
-      if (filtroZona) filters.zona = filtroZona
-      if (filtroModalidad) filters.modalidad = filtroModalidad
-      if (filtroFecha) filters.fecha = filtroFecha
+  const currentFilters: PartidoDisponibleFilters = {
+    zona: filtroZona || undefined,
+    modalidad: filtroModalidad || undefined,
+    fecha: filtroFecha || undefined,
+  }
 
-      const data = await PartidosService.getDisponibles(filters)
-      setPartidos(data)
-    } catch (err) {
-      console.warn("Error al cargar partidos:", err)
-      setError(getErrorMessage(err) || "No se pudieron cargar los partidos")
-      setPartidos([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [filtroZona, filtroModalidad, filtroFecha])
+  const { data: partidos = [], isLoading: isLoadingPartidos, error: partidosError } = usePartidosDisponibles(currentFilters)
+  const { data: filtrosOpciones = null } = useFiltrosDisponibles()
 
-  useEffect(() => {
-    // Wait for the user's zone to load before fetching (to prioritize by zone)
-    if (userZona || !isUsingUserZone) {
-      fetchPartidos()
-    }
-  }, [fetchPartidos, userZona, isUsingUserZone])
+  const isLoading = isLoadingPartidos
+  const error = partidosError ? getErrorMessage(partidosError) : null
 
   // When user manually changes zona filter away from their zone
   useEffect(() => {

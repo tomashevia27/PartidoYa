@@ -14,56 +14,35 @@ import { TablaTab } from "@/components/torneos/TablaTab"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
 
+import { useTorneo, useTorneoFixture, useTorneoMutations } from "@/hooks/use-torneos-query"
+
 const DIAS_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 
 function decodeDias(bitmask: number): string[] {
   return DIAS_LABELS.filter((_, i) => (bitmask >> i) & 1)
 }
 
-
 export default function TorneoDetallePage() {
     const { id } = useParams()
+    const torneoId = Number(id)
     const router = useRouter()
     const { role, userId } = useAuthContext()
-    const [torneo, setTorneo] = useState<TorneoData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState("")
     const [isCancelling, setIsCancelling] = useState(false)
     const [isLeaving, setIsLeaving] = useState(false)
-    const [partidosCount, setPartidosCount] = useState<{ jugados: number; total: number } | null>(null)
+
+    const { data: torneo, isLoading: isLoadingTorneo, error: torneoError } = useTorneo(torneoId)
+    const { data: fixture } = useTorneoFixture(torneoId)
+    const { cancelarTorneo, bajarseTorneo } = useTorneoMutations()
 
     const campeon = torneo?.resultados_finales?.campeon
     const goleador = torneo?.resultados_finales?.goleador
     const vallaMenosVencida = torneo?.resultados_finales?.valla_invicta
 
-    useEffect(() => {
-        async function fetchTorneo() {
-            try {
-                const data = await TorneosService.getById(Number(id))
-                setTorneo(data)
-            } catch (err) {
-                setError(getErrorMessage(err) || "Torneo no encontrado")
-            } finally {
-                setIsLoading(false)
-            }
-        }
-        fetchTorneo()
-    }, [id])
+    const jugados = fixture ? fixture.filter((p: any) => p.estado === 'finalizado').length : 0
+    const partidosCount = fixture ? { jugados, total: fixture.length } : null
 
-    useEffect(() => {
-        if (!torneo) return
-        async function fetchPartidos() {
-            try {
-                const data = await TorneosService.getFixtureTorneo(torneo!.id)
-                const jugados = data.filter((p: any) => p.estado === 'finalizado').length
-                setPartidosCount({ jugados, total: data.length })
-            } catch {
-                // silently fail
-            }
-        }
-        
-        fetchPartidos()
-    }, [torneo])
+    const isLoading = isLoadingTorneo
+    const error = torneoError ? getErrorMessage(torneoError) : ""
 
 
     if (isLoading) {
@@ -113,8 +92,8 @@ export default function TorneoDetallePage() {
         if (result.isConfirmed) {
             setIsCancelling(true)
             try {
-                await TorneosService.cancelar(torneo.id)
-                setTorneo({ ...torneo, estado: "Cancelado" })
+                await cancelarTorneo.mutateAsync(torneo.id)
+                
                 await Swal.fire({
                     title: "Torneo cancelado",
                     text: "El torneo fue cancelado y se notificó a los equipos inscriptos.",
@@ -145,15 +124,14 @@ export default function TorneoDetallePage() {
         if (result.isConfirmed) {
             setIsLeaving(true)
             try {
-                await TorneosService.bajarse(torneo.id)
+                await bajarseTorneo.mutateAsync(torneo.id)
+                
                 await Swal.fire({
                     title: "Inscripción cancelada",
                     text: "Inscripción cancelada con éxito. En las próximas horas la seña será reembolsada.",
                     icon: "success",
                     confirmButtonColor: "#FF6B4A"
                 })
-                const data = await TorneosService.getById(Number(id))
-                setTorneo(data)
             } catch (err) {
                 Swal.fire("Error", getErrorMessage(err) || "No se pudo dar de baja al equipo", "error")
             } finally {

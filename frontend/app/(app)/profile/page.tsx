@@ -5,51 +5,28 @@ import Link from "next/link"
 import { MapPin, Trophy, Pencil, Zap, Clock, DollarSign, Calendar, Star, Users, ChevronRight, Edit3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { UsersService, type UserProfile } from "@/services/users.service"
-import { PartidosService, type PartidoData, type MisPartidosData } from "@/services/partidos.service"
-import { CanchasService, type CanchaData } from "@/services/canchas.service"
-import { TorneosService, type TorneoData } from "@/services/torneos.service"
-import { API_URL } from "@/lib/api-client"
+import { type PartidoData, type MisPartidosData } from "@/services/partidos.service"
+import { useProfile } from "@/hooks/use-profile-query"
+import { useCanchas } from "@/hooks/use-canchas-query"
+import { useMisPartidos } from "@/hooks/use-partidos-query"
+import { useMisTorneos } from "@/hooks/use-torneos-query"
 
 export default function ProfilePage() {
   const { userId, role } = useAuthContext()
-  const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [canchas, setCanchas] = useState<CanchaData[]>([])
-  const [misPartidos, setMisPartidos] = useState<MisPartidosData | null>(null)
-  const [misTorneos, setMisTorneos] = useState<TorneoData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    async function loadProfile() {
-      if (!userId) return
+  const { data: profile = null, isLoading: isLoadingProfile } = useProfile()
+  const { data: canchasData = [], isLoading: isLoadingCanchas } = useCanchas(profile?.rol === "admin" ? "admin" : null)
+  const { data: misPartidosData = null, isLoading: isLoadingPartidos } = useMisPartidos()
+  const { data: misTorneosData = [], isLoading: isLoadingTorneos } = useMisTorneos()
 
-      try {
-        const data = await UsersService.getProfile()
-        setProfile(data)
+  const isLoading = isLoadingProfile || 
+                   (profile?.rol === "admin" && isLoadingCanchas) || 
+                   (profile?.rol === "jugador" && isLoadingPartidos) || 
+                   isLoadingTorneos
 
-        if (data.rol === "admin") {
-          const canchasData = await CanchasService.getMisCanchas()
-          setCanchas(canchasData)
-        } else if (data.rol === "jugador") {
-          const partidosData = await PartidosService.getMisPartidos()
-          setMisPartidos(partidosData)
-        }
-
-        const torneosData = await TorneosService.getMisTorneos()
-        if (data.rol === "admin") {
-          setMisTorneos(torneosData.filter(t => t.rol_usuario === "Organizador"))
-        } else {
-          setMisTorneos(torneosData)
-        }
-      } catch (error) {
-        console.warn("Error al cargar el perfil:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadProfile()
-  }, [userId])
+  const canchas = canchasData
+  const misPartidos = profile?.rol === "jugador" ? misPartidosData : null
+  const misTorneos = profile?.rol === "admin" ? misTorneosData.filter(t => t.rol_usuario === "Organizador") : misTorneosData
 
   const formatearPrecio = (precio: number) => {
     return new Intl.NumberFormat("es-AR", {

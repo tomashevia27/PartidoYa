@@ -1,30 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { TorneosService, type TorneoData, type TablaPosicionData } from "@/services/torneos.service"
+import { type TorneoData } from "@/services/torneos.service"
 import { Loader2, Trophy, TrendingUp } from "lucide-react"
+import { useTorneoTabla } from "@/hooks/use-torneos-query"
 
 interface Props {
   torneo: TorneoData
 }
 
 export function TablaTab({ torneo }: Props) {
-  const [tabla, setTabla] = useState<TablaPosicionData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await TorneosService.getTablaPosiciones(torneo.id)
-        setTabla(data)
-      } catch {
-        setTabla([])
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
-  }, [torneo.id])
+  const { data: tabla = [], isLoading } = useTorneoTabla(torneo.id)
 
   if (isLoading) {
     return (
