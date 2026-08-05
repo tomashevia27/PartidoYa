@@ -72,9 +72,9 @@ def cargar_torneo():
         
         print("2. Creando Torneo...")
         datos_torneo = Torneo(
-            nombre="Copa de Invierno 2026 (Nuevos Nombres)",
-            fecha_inicio=datetime(2026, 6, 1, 0, 0),
-            fecha_fin=datetime(2026, 6, 30, 23, 59),
+            nombre="Copa de Invierno 2025 (Nuevos Nombres)",
+            fecha_inicio=datetime(2025, 6, 1, 0, 0),
+            fecha_fin=datetime(2025, 6, 30, 23, 59),
             formato=FormatoTorneo.fase_grupos,
             zona="Saavedra",
             dias_operativos=127,  # Todos los dias (L-D)
@@ -117,7 +117,7 @@ def cargar_torneo():
         
         partidos_grupos = [p for p in torneo.partidos if p.fase == FaseTorneo.grupos]
         
-        fecha_actual = date(2026, 6, 1)
+        fecha_actual = date(2025, 6, 1)
         hora_actual = time(18, 0)
         
         def avanzar_horario(fecha, hora):
@@ -281,15 +281,30 @@ def cargar_torneo():
         partidos_final = db.query(partido_torneo_service.PartidoTorneo).filter_by(torneo_id=torneo.id, fase=FaseTorneo.final).all()
         if partidos_final:
             p_final = partidos_final[0]
-            # Programar final para el martes 23 de junio de 2026
+            # Programar final para el martes 23 de junio de 2025
             req_final = ProgramarPartidoRequest(
                 cancha_id=cancha.id,
-                fecha=date(2026, 6, 17),
+                fecha=date(2025, 6, 17),
                 horario=time(20, 0)
             )
             partido_torneo_service.programar_partido(db, p_final.id, req_final, laura.id)
 
-        print("¡Proceso completado con éxito!")
+            print("10. Cargando resultado de la Final...")
+            goles_l = random.randint(1, 4)
+            goles_v = random.randint(0, goles_l - 1) if random.choice([True, False]) else random.randint(goles_l + 1, 5)
+            
+            estadisticas = []
+            generar_estadisticas_equipo_eliminatoria(p_final.equipo_local, goles_l, estadisticas)
+            generar_estadisticas_equipo_eliminatoria(p_final.equipo_visitante, goles_v, estadisticas)
+            
+            req_res = CargarResultadoRequest(
+                goles_local=goles_l,
+                goles_visitante=goles_v,
+                estadisticas_jugadores=estadisticas
+            )
+            partido_torneo_service.cargar_resultado_partido(db, p_final.id, req_res)
+
+        print("¡Proceso completado con éxito! Torneo finalizado.")
 
     except Exception as e:
         print(f"Error durante la carga: {e}")

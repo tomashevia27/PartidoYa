@@ -122,9 +122,30 @@ class TorneoResponse(TorneoBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CampeonResponse(BaseModel):
+    equipo_id: Optional[int] = None
+    equipo_nombre: Optional[str] = None
+
+class JugadorDestacadoResponse(BaseModel):
+    usuario_id: Optional[int] = None
+    nombre: Optional[str] = None
+    goles: Optional[int] = None
+
+class VallaInvictaDestacadaResponse(BaseModel):
+    equipo_id: Optional[int] = None
+    nombre: Optional[str] = None
+    goles_recibidos: Optional[int] = None
+
+class ResultadosFinalesResponse(BaseModel):
+    campeon: Optional[CampeonResponse] = None
+    goleador: Optional[JugadorDestacadoResponse] = None
+    valla_invicta: Optional[VallaInvictaDestacadaResponse] = None
+
+
 class TorneoDetalleResponse(TorneoResponse):
     organizador: UsuarioRespuesta
     equipos_inscriptos: List[EquipoDetalleResponse] = []
+    resultados_finales: Optional[ResultadosFinalesResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 

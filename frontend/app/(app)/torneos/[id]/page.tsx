@@ -31,9 +31,10 @@ export default function TorneoDetallePage() {
     const [isCancelling, setIsCancelling] = useState(false)
     const [isLeaving, setIsLeaving] = useState(false)
     const [partidosCount, setPartidosCount] = useState<{ jugados: number; total: number } | null>(null)
-    const [campeon, setCampeon] = useState<any>(null)
-    const [goleador, setGoleador] = useState<any>(null)
-    const [vallaMenosVencida, setVallaMenosVencida] = useState<any>(null)
+
+    const campeon = torneo?.resultados_finales?.campeon
+    const goleador = torneo?.resultados_finales?.goleador
+    const vallaMenosVencida = torneo?.resultados_finales?.valla_invicta
 
     useEffect(() => {
         async function fetchTorneo() {
@@ -61,75 +62,7 @@ export default function TorneoDetallePage() {
             }
         }
         
-        async function fetchChampionData() {
-            if (torneo!.estado === "Finalizado") {
-                try {
-                    const formato = (torneo!.formato || "").toLowerCase();
-                    const esTodosContraTodos = formato === "todos_contra_todos" || formato === "todos contra todos" || formato === "liga";
-
-                    const requests: Promise<any>[] = [
-                        TorneosService.getEstadisticas(torneo!.id).then(res => res),
-                        TorneosService.getVallasInvictas(torneo!.id, 1).catch(() => [])
-                    ];
-
-                    if (esTodosContraTodos) {
-                        requests.push(TorneosService.getTablaPosiciones(torneo!.id));
-                    } else {
-                        requests.push(TorneosService.getFixtureTorneo(torneo!.id).catch(() => []));
-                    }
-
-                    const results = await Promise.all(requests);
-                    const stats = results[0];
-                    const vallas = results[1];
-
-                    if (esTodosContraTodos) {
-                        const tabla = results[2];
-                        if (tabla && tabla.length > 0) {
-                            setCampeon(tabla[0]);
-                        }
-                    } else {
-                        const fixture = results[2];
-                        if (fixture && Array.isArray(fixture)) {
-                            const partidoFinal = fixture.find((p: any) => p.fase === "final" && p.estado === "finalizado");
-                            if (partidoFinal) {
-                                const golesLocal = partidoFinal.goles_local ?? 0;
-                                const golesVisitante = partidoFinal.goles_visitante ?? 0;
-                                let campeonData = null;
-                                if (golesLocal > golesVisitante) {
-                                    campeonData = {
-                                        equipo_nombre: partidoFinal.equipo_local?.nombre || partidoFinal.equipo_local?.nombre_equipo,
-                                        equipo_id: partidoFinal.equipo_local?.id
-                                    };
-                                } else if (golesVisitante > golesLocal) {
-                                    campeonData = {
-                                        equipo_nombre: partidoFinal.equipo_visitante?.nombre || partidoFinal.equipo_visitante?.nombre_equipo,
-                                        equipo_id: partidoFinal.equipo_visitante?.id
-                                    };
-                                }
-                                if (campeonData) {
-                                    setCampeon(campeonData);
-                                }
-                            }
-                        }
-                    }
-
-                    if (stats && stats.jugadores && stats.jugadores.length > 0) {
-                        const goleadores = [...stats.jugadores].sort((a, b) => b.goles - a.goles)
-                        if (goleadores[0].goles > 0) {
-                            setGoleador(goleadores[0])
-                        }
-                    }
-                    if (vallas && vallas.length > 0) {
-                        setVallaMenosVencida(vallas[0])
-                    }
-                } catch (e) {
-                    // silently fail
-                }
-            }
-        }
-
         fetchPartidos()
-        fetchChampionData()
     }, [torneo])
 
 
@@ -328,7 +261,7 @@ export default function TorneoDetallePage() {
                                     </div>
                                     <div className="min-w-0">
                                         <div className="text-primary-foreground/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-0.5">Goleador del Torneo</div>
-                                        <div className="text-primary-foreground font-bold text-base sm:text-lg leading-tight truncate">{goleador.usuario_nombre} {goleador.usuario_apellido}</div>
+                                        <div className="text-primary-foreground font-bold text-base sm:text-lg leading-tight truncate">{goleador.nombre}</div>
                                         <div className="text-primary-foreground/90 text-xs sm:text-sm font-medium mt-0.5">{goleador.goles} goles</div>
                                     </div>
                                 </div>
@@ -341,7 +274,7 @@ export default function TorneoDetallePage() {
                                     </div>
                                     <div className="min-w-0">
                                         <div className="text-primary-foreground/70 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-0.5">Valla Menos Vencida</div>
-                                        <div className="text-primary-foreground font-bold text-base sm:text-lg leading-tight truncate">{vallaMenosVencida.equipo_nombre}</div>
+                                        <div className="text-primary-foreground font-bold text-base sm:text-lg leading-tight truncate">{vallaMenosVencida.nombre}</div>
                                         <div className="text-primary-foreground/90 text-xs sm:text-sm font-medium mt-0.5">{vallaMenosVencida.goles_recibidos} en contra</div>
                                     </div>
                                 </div>

@@ -77,6 +77,12 @@ def obtener_torneo(
     if not torneo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Torneo no encontrado")
 
+    from ..models.torneo_model import EstadoTorneo
+    if torneo.estado == EstadoTorneo.finalizado:
+        from ..services.partido_torneo_service import calcular_resultados_finales
+        resultados = calcular_resultados_finales(db, torneo.id, torneo.formato)
+        setattr(torneo, "resultados_finales", resultados)
+
     return torneo
 
 

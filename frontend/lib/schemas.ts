@@ -13,7 +13,7 @@ export const EquipoInscriptoSchema = z.object({
   nombre: z.string().optional(),
   nombre_equipo: z.string().optional(),
   jugadores: z.union([z.string(), z.array(JugadorSimpleSchema)]),
-  escudo: z.string().optional(),
+  escudo: z.string().nullable().optional(),
 });
 
 export const UserProfileSchema = z.object({
@@ -69,6 +69,23 @@ export const PartidoSchema = z.object({
   jugadores: z.array(UserProfileSchema).optional(),
 });
 
+export const ResultadosFinalesSchema = z.object({
+  campeon: z.object({
+    equipo_id: z.number().nullable().optional(),
+    equipo_nombre: z.string().nullable().optional(),
+  }).nullable().optional(),
+  goleador: z.object({
+    usuario_id: z.number().nullable().optional(),
+    nombre: z.string().nullable().optional(),
+    goles: z.number().nullable().optional(),
+  }).nullable().optional(),
+  valla_invicta: z.object({
+    equipo_id: z.number().nullable().optional(),
+    nombre: z.string().nullable().optional(),
+    goles_recibidos: z.number().nullable().optional(),
+  }).nullable().optional(),
+});
+
 // Torneo
 export const TorneoSchema = z.object({
   id: z.number(),
@@ -93,6 +110,7 @@ export const TorneoSchema = z.object({
   lugar: z.string(),
   cupos_restantes: z.number().optional(),
   rol_usuario: z.enum(["Organizador", "Jugador"]).optional(),
+  resultados_finales: ResultadosFinalesSchema.nullable().optional(),
 });
 
 // We can define array schemas to use directly in fetchApi
