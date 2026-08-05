@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TorneoData, getTopJugadores, TopJugadorData, getVallasInvictas, VallaInvictaData } from "@/hooks/use-api"
+import { TorneosService, type TorneoData, type TopJugadorData, type VallaInvictaData } from "@/services/torneos.service"
 import { Loader2, Goal, ShieldCheck, Trophy, Medal, ChevronDown, ChevronUp } from "lucide-react"
 
 interface Props {
@@ -19,8 +19,8 @@ export function EstadisticasTab({ torneo }: Props) {
     const loadStats = async () => {
       try {
         const [g, v] = await Promise.all([
-          getTopJugadores(torneo.id, "goleadores", 50).catch(() => []),
-          getVallasInvictas(torneo.id, 50).catch(() => []),
+          TorneosService.getTopJugadores(torneo.id, "goleadores", 50).catch(() => []),
+          TorneosService.getVallasInvictas(torneo.id, 50).catch(() => []),
         ])
         setGoleadores(g)
         // Ordenar de menor a mayor goles recibidos

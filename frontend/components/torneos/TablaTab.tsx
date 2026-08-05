@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TorneoData, getTablaPosiciones, TablaPosicionData } from "@/hooks/use-api"
+import { TorneosService, type TorneoData, type TablaPosicionData } from "@/services/torneos.service"
 import { Loader2, Trophy, TrendingUp } from "lucide-react"
 
 interface Props {
@@ -15,7 +15,7 @@ export function TablaTab({ torneo }: Props) {
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await getTablaPosiciones(torneo.id)
+        const data = await TorneosService.getTablaPosiciones(torneo.id)
         setTabla(data)
       } catch {
         setTabla([])

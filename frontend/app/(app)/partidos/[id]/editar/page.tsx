@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
-import { editarPartido, getPartido, getTurnos, type PartidoData, API_URL } from "@/hooks/use-api"
+import { PartidosService, type PartidoData } from "@/services/partidos.service"
+import { ReservasService } from "@/services/reservas.service"
+import { API_URL } from "@/lib/api-client"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { PartidoFormSchema, type PartidoFormValues } from "@/lib/schemas"
@@ -53,7 +55,7 @@ function EditarPartidoForm() {
   useEffect(() => {
     async function fetchPartido() {
       try {
-        const data = await getPartido(partidoId)
+        const data = await PartidosService.getById(partidoId)
         setPartido(data)
         
         let maxCupos = undefined;
@@ -108,7 +110,7 @@ function EditarPartidoForm() {
     }
 
     if (watchFecha) {
-      getTurnos(cancha.id, watchFecha, Number(partidoId))
+      ReservasService.getTurnos(cancha.id, watchFecha, Number(partidoId))
         .then(data => {
           const duracion = Number(cancha.duracion_turno) || 60
           const turnos = data.slots.map(s => {
@@ -147,7 +149,7 @@ function EditarPartidoForm() {
 
   const onSubmit = async (data: PartidoFormValues) => {
     try {
-      await editarPartido(partidoId, {
+      await PartidosService.update(partidoId, {
         cancha_id: data.cancha_id,
         fecha: data.fecha,
         horario: data.horario,

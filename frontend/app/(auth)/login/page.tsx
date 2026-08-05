@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuthContext } from "@/components/auth-provider"
-import { loginUser } from "@/hooks/use-api"
+import { AuthService } from "@/services/auth.service"
 import { Loader2, Mail, Lock, Trophy } from "lucide-react"
 
 import Swal from 'sweetalert2'
@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginValues) => {
     try {
-      const response = await loginUser(data.email, data.password)
+      const response = await AuthService.login(data.email, data.password)
 
       login(String(response.usuario_id), response.rol, response.access_token)
 

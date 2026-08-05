@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, Legend } from "recharts"
-import { getMisCanchas, CanchaData, getKpis, KpiResumen, getReservasPorPeriodo, ReservasPorPeriodoRespuesta, getOcupacion, OcupacionRespuesta, getDistribucionTipo, DistribucionTipoRespuesta, getDistribucionModalidad, DistribucionModalidadRespuesta, getMapaCalor, MapaCalorRespuesta, getReservasPorDiaSemana, ReservasPorDiaSemanaRespuesta, getIngresos, IngresosRespuesta, getCancelaciones, CancelacionesRespuesta, getComparativaCanchas, ComparativaCanchasRespuesta } from "@/hooks/use-api"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { EstadisticasService, type KpiResumen, type ReservasPorPeriodoRespuesta, type OcupacionRespuesta, type DistribucionTipoRespuesta, type DistribucionModalidadRespuesta, type MapaCalorRespuesta, type ReservasPorDiaSemanaRespuesta, type IngresosRespuesta, type CancelacionesRespuesta, type ComparativaCanchasRespuesta } from "@/services/estadisticas.service"
 import { format, startOfMonth, startOfWeek, subMonths, startOfYear, endOfMonth } from "date-fns"
 
 const COLORS = ['#ea580c', '#c2410c', '#9a3412', '#7f1d1d', '#f97316'];
@@ -54,7 +55,7 @@ export default function EstadisticasPage() {
     useEffect(() => {
         async function fetchInitialData() {
             try {
-                const canchasData = await getMisCanchas()
+                const canchasData = await CanchasService.getMisCanchas()
                 setCanchas(canchasData)
             } catch (e) {
                 console.error("Error fetching canchas", e)
@@ -92,16 +93,16 @@ export default function EstadisticasPage() {
                 const canchaId = selectedCancha !== "todas" ? parseInt(selectedCancha) : undefined
 
                 const [kpisData, reservasData, ocupacionData, tipoData, modalidadData, mapaData, diasData, ingresosData, cancelacionesData, comparativaData] = await Promise.all([
-                    getKpis(canchaId),
-                    getReservasPorPeriodo(fechaDesde, fechaHasta, canchaId),
-                    getOcupacion(fechaDesde, fechaHasta, canchaId),
-                    getDistribucionTipo(fechaDesde, fechaHasta, canchaId),
-                    getDistribucionModalidad(fechaDesde, fechaHasta, canchaId),
-                    getMapaCalor(fechaDesde, fechaHasta, canchaId),
-                    getReservasPorDiaSemana(fechaDesde, fechaHasta, canchaId),
-                    getIngresos(fechaDesde, fechaHasta, canchaId),
-                    getCancelaciones(fechaDesde, fechaHasta, canchaId),
-                    getComparativaCanchas(fechaDesde, fechaHasta)
+                    EstadisticasService.getKpis(canchaId),
+                    EstadisticasService.getReservasPorPeriodo(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getOcupacion(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getDistribucionTipo(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getDistribucionModalidad(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getMapaCalor(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getReservasPorDiaSemana(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getIngresos(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getCancelaciones(fechaDesde, fechaHasta, canchaId),
+                    EstadisticasService.getComparativaCanchas(fechaDesde, fechaHasta)
                 ])
 
                 setKpis(kpisData)

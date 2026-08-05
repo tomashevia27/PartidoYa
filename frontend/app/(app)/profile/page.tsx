@@ -5,7 +5,11 @@ import Link from "next/link"
 import { MapPin, Trophy, Pencil, Zap, Clock, DollarSign, Calendar, Star, Users, ChevronRight, Edit3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { getUserProfile, getMisPartidos, getMisCanchas, getMisTorneos, API_URL, type UserProfile, type PartidoData, type TorneoData, type MisPartidosData, type CanchaData } from "@/hooks/use-api"
+import { UsersService, type UserProfile } from "@/services/users.service"
+import { PartidosService, type PartidoData, type MisPartidosData } from "@/services/partidos.service"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { TorneosService, type TorneoData } from "@/services/torneos.service"
+import { API_URL } from "@/lib/api-client"
 
 export default function ProfilePage() {
   const { userId, role } = useAuthContext()
@@ -20,18 +24,18 @@ export default function ProfilePage() {
       if (!userId) return
 
       try {
-        const data = await getUserProfile()
+        const data = await UsersService.getProfile()
         setProfile(data)
 
         if (data.rol === "admin") {
-          const canchasData = await getMisCanchas()
+          const canchasData = await CanchasService.getMisCanchas()
           setCanchas(canchasData)
         } else if (data.rol === "jugador") {
-          const partidosData = await getMisPartidos()
+          const partidosData = await PartidosService.getMisPartidos()
           setMisPartidos(partidosData)
         }
 
-        const torneosData = await getMisTorneos()
+        const torneosData = await TorneosService.getMisTorneos()
         if (data.rol === "admin") {
           setMisTorneos(torneosData.filter(t => t.rol_usuario === "Organizador"))
         } else {

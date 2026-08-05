@@ -7,7 +7,8 @@ import { useRouter } from "next/navigation"
 import { MapPin, Clock, Zap, DollarSign, Search, Filter, Trophy, Users, Star, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { getMisCanchas, API_URL, type CanchaData } from "@/hooks/use-api"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { API_URL } from "@/lib/api-client"
 
 // Football SVG Component
 function FootballIcon({ className }: { className?: string }) {
@@ -35,7 +36,7 @@ export default function CanchasPage() {
         async function fetchCanchas() {
             try {
                 if (role === "admin") {
-                    const data = await getMisCanchas()
+                    const data = await CanchasService.getMisCanchas()
                     setCanchas(data)
                 } else {
                     const res = await fetch(`${API_URL}/canchas/disponibles`)

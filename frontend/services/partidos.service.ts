@@ -106,7 +106,7 @@ export const PartidosService = {
     if (filters?.fecha) params.set("fecha", filters.fecha)
 
     const queryString = params.toString()
-    const endpoint = `/partidos/disponibles${queryString ? \`?\${queryString}\` : ""}`
+    const endpoint = `/partidos/disponibles${queryString ? "?" + queryString : ""}`
 
     try {
       return await fetchApi(endpoint);

@@ -18,7 +18,7 @@ import {
   BellOff,
 } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
-import { NotificacionData } from "@/hooks/use-api"
+import { type NotificacionData } from "@/services/notificaciones.service"
 
 function getTimeAgo(fechaStr: string): string {
   const fecha = new Date(fechaStr)

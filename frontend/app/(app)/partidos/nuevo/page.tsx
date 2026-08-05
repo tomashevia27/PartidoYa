@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Info, ArrowLeft, Clock, DollarSign, Zap } from "lucide-react"
 import Swal from "sweetalert2"
-import { crearPartido, getTurnos, API_URL } from "@/hooks/use-api"
+import { PartidosService } from "@/services/partidos.service"
+import { ReservasService } from "@/services/reservas.service"
+import { API_URL } from "@/lib/api-client"
 import { getErrorMessage } from "@/lib/api-client"
 
 import { useForm } from "react-hook-form"
@@ -56,7 +58,7 @@ function NuevoPartidoForm() {
     }
 
     if (watchFecha) {
-      getTurnos(cancha.id, watchFecha)
+      ReservasService.getTurnos(cancha.id, watchFecha)
         .then(data => {
           const duracion = Number(cancha.duracion_turno) || 60
           const turnos = data.slots.map(s => {
@@ -145,7 +147,7 @@ function NuevoPartidoForm() {
 
   const onSubmit = async (data: PartidoFormValues) => {
     try {
-      await crearPartido({
+      await PartidosService.create({
         cancha_id: data.cancha_id,
         fecha: data.fecha,
         horario: data.horario,

@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Trophy, Calendar, Users, MapPin, Plus, Loader2, UserCheck, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getTorneosDisponibles, getMisTorneos, TorneoData } from "@/hooks/use-api"
+import { TorneosService, type TorneoData } from "@/services/torneos.service"
 import { useAuthContext } from "@/components/auth-provider"
 
 type MisTorneosCategory = "Próximos" | "En curso" | "Finalizados" | "Cancelados"
@@ -30,10 +30,10 @@ export default function TorneosPage() {
             setIsLoading(true)
             try {
                 if (activeTab === "disponibles") {
-                    const data = await getTorneosDisponibles()
+                    const data = await TorneosService.getDisponibles()
                     if (isCurrent) setTorneos(data)
                 } else {
-                    const data = await getMisTorneos()
+                    const data = await TorneosService.getMisTorneos()
                     if (isCurrent) setTorneos(data)
                 }
             } catch (error) {

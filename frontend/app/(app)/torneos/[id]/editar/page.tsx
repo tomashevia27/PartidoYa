@@ -11,7 +11,7 @@ import {
     RefreshCw, Layers, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { editarTorneo, getTorneo } from "@/hooks/use-api"
+import { TorneosService } from "@/services/torneos.service"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
@@ -78,7 +78,7 @@ export default function EditarTorneoPage() {
     useEffect(() => {
         async function fetchTorneo() {
             try {
-                const data = await getTorneo(Number(id))
+                const data = await TorneosService.getById(Number(id))
                 
                 let fi = "";
                 let ff = "";
@@ -148,7 +148,7 @@ export default function EditarTorneoPage() {
         const franja_horaria = `${ah}:${data.apertura_m}-${ch}:${data.cierre_m}`
 
         try {
-            await editarTorneo(Number(id), {
+            await TorneosService.update(Number(id), {
                 nombre: data.nombre,
                 fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
                 fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),

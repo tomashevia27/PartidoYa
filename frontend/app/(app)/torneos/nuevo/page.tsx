@@ -11,7 +11,7 @@ import {
     RefreshCw, Layers
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { crearTorneo } from "@/hooks/use-api"
+import { TorneosService } from "@/services/torneos.service"
 import Link from "next/link"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
@@ -96,7 +96,7 @@ export default function CrearTorneoPage() {
         const franja_horaria = `${ah}:${data.apertura_m}-${ch}:${data.cierre_m}`
 
         try {
-            await crearTorneo({
+            await TorneosService.create({
                 nombre: data.nombre,
                 fecha_inicio: new Date(data.fecha_inicio + "T12:00:00").toISOString(),
                 fecha_fin: new Date(data.fecha_fin + "T12:00:00").toISOString(),

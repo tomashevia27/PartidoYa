@@ -1,16 +1,8 @@
 import { getErrorMessage } from "@/lib/api-client"
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
-import {
-  getMisCanchas,
-  getAgenda,
-  bloquearTurno,
-  desbloquearTurno,
-  cancelarReservaDueno,
-  type AgendaData,
-  type AgendaSlot,
-  type CanchaData,
-} from "@/hooks/use-api"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { ReservasService, type AgendaData, type AgendaSlot } from "@/services/reservas.service"
 
 export function useAgenda() {
   const [canchas, setCanchas] = useState<CanchaData[]>([])
@@ -29,7 +21,7 @@ export function useAgenda() {
   useEffect(() => {
     async function fetchCanchas() {
       try {
-        const data = await getMisCanchas()
+        const data = await CanchasService.getMisCanchas()
         setCanchas(data)
         if (data.length > 0) {
           setCanchaSeleccionada(data[0].id)
@@ -49,7 +41,7 @@ export function useAgenda() {
     async function fetchAgenda() {
       setIsLoadingAgenda(true)
       try {
-        const data = await getAgenda(canchaSeleccionada as number, fecha)
+        const data = await ReservasService.getAgenda(canchaSeleccionada as number, fecha)
         setAgenda(data)
       } catch (e) {
         console.warn("Error al cargar agenda:", e)
@@ -64,7 +56,7 @@ export function useAgenda() {
 
   const recargarAgenda = () => {
     if (canchaSeleccionada && fecha) {
-      getAgenda(canchaSeleccionada as number, fecha)
+      ReservasService.getAgenda(canchaSeleccionada as number, fecha)
         .then((data) => setAgenda(data))
         .catch(() => {})
     }
@@ -90,7 +82,7 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await bloquearTurno({
+      await ReservasService.bloquearTurno({
         cancha_id: Number(canchaSeleccionada),
         fecha,
         horario: slot.horario,
@@ -126,7 +118,7 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await desbloquearTurno(slot.partido_id)
+      await ReservasService.desbloquearTurno(slot.partido_id)
       await Swal.fire({
         title: "Turno desbloqueado",
         text: "El turno vuelve a estar disponible.",
@@ -158,7 +150,7 @@ export function useAgenda() {
     })
     if (!confirm.isConfirmed) return
     try {
-      await cancelarReservaDueno(slot.partido_id)
+      await ReservasService.cancelarReservaDueno(slot.partido_id)
       await Swal.fire({
         title: "Reserva cancelada",
         text: "El turno fue liberado exitosamente.",

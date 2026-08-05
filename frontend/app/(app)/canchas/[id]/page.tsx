@@ -5,7 +5,8 @@ import Link from "next/link"
 import { ArrowLeft, MapPin, Clock, Zap, DollarSign, CheckCircle, XCircle, Pencil, Trash, Calendar, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthContext } from "@/components/auth-provider"
-import { eliminarCancha, API_URL } from "@/hooks/use-api"
+import { CanchasService } from "@/services/canchas.service"
+import { API_URL } from "@/lib/api-client"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
 
@@ -87,7 +88,7 @@ export default function CanchaDetallePage() {
 
         if (result.isConfirmed) {
             try {
-                await eliminarCancha(canchaId as string)
+                await CanchasService.delete(canchaId as string)
                 await Swal.fire(
                     "¡Eliminada!",
                     "La cancha ha sido eliminada exitosamente.",

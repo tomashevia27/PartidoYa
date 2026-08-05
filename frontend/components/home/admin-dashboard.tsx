@@ -5,15 +5,9 @@ import { useRouter } from "next/navigation"
 import { Calendar, BarChart3, Trophy, Star, MapPin, Plus, ChevronLeft, ChevronRight, Zap, Clock, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { HeroSection, FootballIcon } from "@/components/home/hero-section"
-import {
-  getMisCanchas,
-  getMisTorneos,
-  getTorneosDisponibles,
-  getUserProfile,
-  type CanchaData,
-  type TorneoData,
-  type UserProfile
-} from "@/hooks/use-api"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
+import { TorneosService, type TorneoData } from "@/services/torneos.service"
+import { UsersService, type UserProfile } from "@/services/users.service"
 
 export function useAdminDashboard() {
   const [canchas, setCanchas] = useState<CanchaData[]>([])
@@ -26,10 +20,10 @@ export function useAdminDashboard() {
     async function fetchAdminData() {
       try {
         const [canchasData, misTorneosData, torneosDispData, profileData] = await Promise.all([
-          getMisCanchas(),
-          getMisTorneos(),
-          getTorneosDisponibles().catch(() => []),
-          getUserProfile().catch(() => null)
+          CanchasService.getMisCanchas(),
+          TorneosService.getMisTorneos(),
+          TorneosService.getDisponibles().catch(() => []),
+          UsersService.getProfile().catch(() => null)
         ])
         
         const torneosOrganizados = misTorneosData.filter((t: TorneoData) => t.rol_usuario === "Organizador")

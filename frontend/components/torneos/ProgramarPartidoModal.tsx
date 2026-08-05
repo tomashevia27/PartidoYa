@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PartidoTorneoData, TorneoData, programarPartido, getCanchas, CanchaData } from "@/hooks/use-api"
+import { TorneosService, type PartidoTorneoData, type TorneoData } from "@/services/torneos.service"
+import { CanchasService, type CanchaData } from "@/services/canchas.service"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
@@ -62,7 +63,7 @@ export function ProgramarPartidoModal({ partido, torneo, isOpen, onClose, onSucc
   const loadCanchas = async () => {
     setIsLoadingCanchas(true)
     try {
-      const all = await getCanchas()
+      const all = await CanchasService.getAll()
       const filtradas = all.filter((c) => c.zona === torneo.zona)
       setCanchas(filtradas)
     } catch {
@@ -79,7 +80,7 @@ export function ProgramarPartidoModal({ partido, torneo, isOpen, onClose, onSucc
 
     setIsSubmitting(true)
     try {
-      await programarPartido(partido.id, {
+      await TorneosService.programarPartido(partido.id, {
         cancha_id: Number(canchaId),
         fecha,
         horario: horario.length === 5 ? `${horario}:00` : horario,

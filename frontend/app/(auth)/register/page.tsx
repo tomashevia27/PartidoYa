@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { registerUser, uploadImageToCloudinary } from "@/hooks/use-api"
+import { UsersService } from "@/services/users.service"
 import Swal from 'sweetalert2'
 import { Camera, Trophy, Users } from "lucide-react"
 import { getErrorMessage } from "@/lib/api-client"
@@ -82,7 +82,7 @@ export default function RegisterPage() {
       let fotoUrl: string | undefined
       if (foto) {
         try {
-          fotoUrl = await uploadImageToCloudinary(foto)
+          fotoUrl = await UsersService.uploadImage(foto)
         } catch {
           Swal.fire({
             title: "Error de imagen",
@@ -106,7 +106,7 @@ export default function RegisterPage() {
         foto_perfil: fotoUrl,
       }
 
-      await registerUser(userData as any)
+      await UsersService.register(userData as any)
       router.push(`/confirm?email=${encodeURIComponent(data.email)}`)
     } catch (error) {
       Swal.fire({

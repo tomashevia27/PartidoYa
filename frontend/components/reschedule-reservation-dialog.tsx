@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Clock, Calendar } from "lucide-react"
-import { reprogramarReserva, getTurnos, type TurnoSlot } from "@/hooks/use-api"
+import { ReservasService, type TurnoSlot } from "@/services/reservas.service"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
 
@@ -58,7 +58,7 @@ export function RescheduleReservationDialog({
     setIsLoadingTurnos(true)
     setNuevoHorario("")
 
-    getTurnos(canchaId, nuevaFecha, partidoId)
+    ReservasService.getTurnos(canchaId, nuevaFecha, partidoId)
       .then((data) => {
         const turnosConFin = data.slots.map((s: TurnoSlot) => {
           const [h, m] = s.horario.split(":").map(Number)
@@ -108,7 +108,7 @@ export function RescheduleReservationDialog({
 
     setIsSubmitting(true)
     try {
-      await reprogramarReserva(partidoId, {
+      await ReservasService.reprogramarReserva(partidoId, {
         fecha: nuevaFecha,
         horario: nuevoHorario,
       })

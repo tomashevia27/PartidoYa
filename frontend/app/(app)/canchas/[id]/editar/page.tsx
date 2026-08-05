@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuthContext } from "@/components/auth-provider"
-import { actualizarCancha, uploadImageToCloudinary, API_URL } from "@/hooks/use-api"
+import { CanchasService } from "@/services/canchas.service"
+import { UsersService } from "@/services/users.service"
+import { API_URL } from "@/lib/api-client"
 import Swal from 'sweetalert2'
 import { getErrorMessage } from "@/lib/api-client"
 import { CanchaFormSchema, type CanchaFormValues } from "@/lib/schemas"
@@ -97,7 +99,7 @@ export default function EditarCanchaPage() {
 
       if (foto) {
         try {
-          fotoUrl = await uploadImageToCloudinary(foto)
+          fotoUrl = await UsersService.uploadImage(foto)
         } catch {
           Swal.fire({
             title: "Error de imagen",
@@ -113,7 +115,7 @@ export default function EditarCanchaPage() {
       const hora_apertura = `${data.apertura_h.padStart(2, '0')}:${data.apertura_m}`
       const hora_cierre = `${data.cierre_h.padStart(2, '0')}:${data.cierre_m}`
 
-      await actualizarCancha(canchaId, {
+      await CanchasService.update(canchaId, {
         nombre: data.nombre,
         tipo_superficie: data.tipo_superficie,
         tamano: data.tamano,

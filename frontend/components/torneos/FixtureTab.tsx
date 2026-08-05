@@ -2,16 +2,13 @@
 
 import { useEffect, useState, Fragment } from "react"
 import {
-  PartidoTorneoData,
-  PartidoBracketData,
-  FechaFixtureData,
-  RondaBracketData,
-  generarFixture,
-  getFixtureTorneo,
-  getFixturePorFechas,
-  getBracketTorneo,
-  TorneoData,
-} from "@/hooks/use-api"
+  TorneosService,
+  type PartidoTorneoData,
+  type PartidoBracketData,
+  type FechaFixtureData,
+  type RondaBracketData,
+  type TorneoData,
+} from "@/services/torneos.service"
 import { Button } from "@/components/ui/button"
 import { CargarResultadoModal } from "./CargarResultadoModal"
 import { ProgramarPartidoModal } from "./ProgramarPartidoModal"
@@ -214,7 +211,7 @@ function FixturePorFechas({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    getFixturePorFechas(torneoId)
+    TorneosService.getFixturePorFechas(torneoId)
       .then((r) => setFechas(r.fechas))
       .catch(() => setFechas([]))
       .finally(() => setIsLoading(false))
@@ -328,7 +325,7 @@ function BracketView({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    getBracketTorneo(torneoId)
+    TorneosService.getBracketTorneo(torneoId)
       .then((r) => setRondas(r.rondas))
       .catch(() => setRondas([]))
       .finally(() => setIsLoading(false))
@@ -494,7 +491,7 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
 
   const loadFixture = async () => {
     try {
-      const data = await getFixtureTorneo(torneo.id)
+      const data = await TorneosService.getFixtureTorneo(torneo.id)
       setPartidos(data)
     } catch (e) {
       console.error(e)
@@ -510,7 +507,7 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
   const handleGenerar = async () => {
     setIsGenerating(true)
     try {
-      const data = await generarFixture(torneo.id)
+      const data = await TorneosService.generarFixture(torneo.id)
       setPartidos(data)
       Swal.fire("¡Fixture generado!", "Los partidos fueron creados correctamente.", "success")
     } catch (error) {

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Trophy, Calendar, Users, MapPin, AlignLeft, ArrowLeft, Loader2, Info, Shield, XCircle, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getTorneo, cancelarTorneo, TorneoData, JugadorSimple, getFixtureTorneo, bajarseDeTorneo, API_URL } from "@/hooks/use-api"
+import { TorneosService, type TorneoData, type JugadorSimple } from "@/services/torneos.service"
 import { useAuthContext } from "@/components/auth-provider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FixtureTab } from "@/components/torneos/FixtureTab"
@@ -38,7 +38,7 @@ export default function TorneoDetallePage() {
     useEffect(() => {
         async function fetchTorneo() {
             try {
-                const data = await getTorneo(Number(id))
+                const data = await TorneosService.getById(Number(id))
                 setTorneo(data)
             } catch (err) {
                 setError(getErrorMessage(err) || "Torneo no encontrado")
@@ -53,7 +53,7 @@ export default function TorneoDetallePage() {
         if (!torneo) return
         async function fetchPartidos() {
             try {
-                const data = await getFixtureTorneo(torneo!.id)
+                const data = await TorneosService.getFixtureTorneo(torneo!.id)
                 const jugados = data.filter((p: any) => p.estado === 'finalizado').length
                 setPartidosCount({ jugados, total: data.length })
             } catch {
@@ -68,14 +68,14 @@ export default function TorneoDetallePage() {
                     const esTodosContraTodos = formato === "todos_contra_todos" || formato === "todos contra todos" || formato === "liga";
 
                     const requests: Promise<any>[] = [
-                        fetch(`${API_URL}/api/torneos/${torneo!.id}/estadisticas`).then(res => res.json()),
-                        fetch(`${API_URL}/api/torneos/${torneo!.id}/top/vallas-invictas?limit=1`).then(res => res.ok ? res.json() : [])
+                        TorneosService.getEstadisticas(torneo!.id).then(res => res),
+                        TorneosService.getVallasInvictas(torneo!.id, 1).catch(() => [])
                     ];
 
                     if (esTodosContraTodos) {
-                        requests.push(fetch(`${API_URL}/api/torneos/${torneo!.id}/tabla-posiciones`).then(res => res.json()));
+                        requests.push(TorneosService.getTablaPosiciones(torneo!.id));
                     } else {
-                        requests.push(getFixtureTorneo(torneo!.id).catch(() => []));
+                        requests.push(TorneosService.getFixtureTorneo(torneo!.id).catch(() => []));
                     }
 
                     const results = await Promise.all(requests);
@@ -180,7 +180,7 @@ export default function TorneoDetallePage() {
         if (result.isConfirmed) {
             setIsCancelling(true)
             try {
-                await cancelarTorneo(torneo.id)
+                await TorneosService.cancelar(torneo.id)
                 setTorneo({ ...torneo, estado: "Cancelado" })
                 await Swal.fire({
                     title: "Torneo cancelado",
@@ -212,14 +212,14 @@ export default function TorneoDetallePage() {
         if (result.isConfirmed) {
             setIsLeaving(true)
             try {
-                await bajarseDeTorneo(torneo.id)
+                await TorneosService.bajarse(torneo.id)
                 await Swal.fire({
                     title: "Inscripción cancelada",
                     text: "Inscripción cancelada con éxito. En las próximas horas la seña será reembolsada.",
                     icon: "success",
                     confirmButtonColor: "#FF6B4A"
                 })
-                const data = await getTorneo(Number(id))
+                const data = await TorneosService.getById(Number(id))
                 setTorneo(data)
             } catch (err) {
                 Swal.fire("Error", getErrorMessage(err) || "No se pudo dar de baja al equipo", "error")

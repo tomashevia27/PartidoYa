@@ -1,15 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import {
-  getNotificaciones,
-  getConteoNoLeidas,
-  marcarNotificacionLeida,
-  marcarTodasLeidas,
-  eliminarNotificacion,
-  eliminarTodasNotificaciones,
-  NotificacionData,
-} from "@/hooks/use-api"
+import { NotificacionesService, type NotificacionData } from "@/services/notificaciones.service"
 
 const POLLING_INTERVAL = 30000 // 30 segundos
 
@@ -21,7 +13,7 @@ export function useNotifications() {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const data = await getConteoNoLeidas()
+      const data = await NotificacionesService.getConteoNoLeidas()
       setUnreadCount(data.total_no_leidas)
     } catch {
       // Silenciar errores de polling para no molestar al usuario
@@ -31,7 +23,7 @@ export function useNotifications() {
   const fetchNotificaciones = useCallback(async () => {
     setIsLoading(true)
     try {
-      const data = await getNotificaciones()
+      const data = await NotificacionesService.getAll()
       setNotificaciones(data.notificaciones)
       setUnreadCount(data.total_no_leidas)
     } catch {
@@ -43,7 +35,7 @@ export function useNotifications() {
 
   const markAsRead = useCallback(async (id: number) => {
     try {
-      await marcarNotificacionLeida(id)
+      await NotificacionesService.marcarLeida(id)
       setNotificaciones((prev) =>
         prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
       )
@@ -55,7 +47,7 @@ export function useNotifications() {
 
   const markAllAsRead = useCallback(async () => {
     try {
-      await marcarTodasLeidas()
+      await NotificacionesService.marcarTodasLeidas()
       setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })))
       setUnreadCount(0)
     } catch {
@@ -65,7 +57,7 @@ export function useNotifications() {
 
   const deleteNotification = useCallback(async (id: number) => {
     try {
-      await eliminarNotificacion(id)
+      await NotificacionesService.eliminar(id)
       setNotificaciones((prev) => {
         const notif = prev.find((n) => n.id === id)
         if (notif && !notif.leida) {
@@ -80,7 +72,7 @@ export function useNotifications() {
 
   const deleteAll = useCallback(async () => {
     try {
-      await eliminarTodasNotificaciones()
+      await NotificacionesService.eliminarTodas()
       setNotificaciones([])
       setUnreadCount(0)
     } catch {

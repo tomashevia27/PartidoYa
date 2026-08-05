@@ -19,15 +19,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuthContext } from "@/components/auth-provider"
-import {
-  getPartidosDisponibles,
-  getUserProfile,
-  getFiltrosDisponibles,
-  type PartidoData,
-  type UserProfile,
-  type PartidoDisponibleFilters,
-  type FiltrosDisponiblesData,
-} from "@/hooks/use-api"
+import { UsersService, type UserProfile } from "@/services/users.service"
+import { PartidosService, type PartidoData, type PartidoDisponibleFilters, type FiltrosDisponiblesData } from "@/services/partidos.service"
 
 
 
@@ -63,7 +56,7 @@ export default function PartidosDisponiblesPage() {
   useEffect(() => {
     async function loadProfile() {
       try {
-        const profile = await getUserProfile()
+        const profile = await UsersService.getProfile()
         setUserProfile(profile)
         if (profile.zona) {
           setUserZona(profile.zona)
@@ -75,7 +68,7 @@ export default function PartidosDisponiblesPage() {
     }
     async function loadFiltros() {
       try {
-        const opciones = await getFiltrosDisponibles()
+        const opciones = await PartidosService.getFiltrosDisponibles()
         setFiltrosOpciones(opciones)
       } catch (e) {
         console.warn("Error al cargar filtros dinámicos:", e)
@@ -95,7 +88,7 @@ export default function PartidosDisponiblesPage() {
       if (filtroModalidad) filters.modalidad = filtroModalidad
       if (filtroFecha) filters.fecha = filtroFecha
 
-      const data = await getPartidosDisponibles(filters)
+      const data = await PartidosService.getDisponibles(filters)
       setPartidos(data)
     } catch (err) {
       console.warn("Error al cargar partidos:", err)

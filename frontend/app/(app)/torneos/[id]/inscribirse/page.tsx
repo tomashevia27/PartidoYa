@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Trophy, ArrowLeft, Loader2, AlertCircle, Users, Shield, Image as ImageIcon, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { getTorneo, inscribirEquipo, TorneoData } from "@/hooks/use-api"
+import { TorneosService, type TorneoData } from "@/services/torneos.service"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
 import { useForm, useFieldArray } from "react-hook-form"
@@ -43,7 +43,7 @@ export default function InscripcionTorneoPage() {
     useEffect(() => {
         async function fetchTorneo() {
             try {
-                const data = await getTorneo(Number(id))
+                const data = await TorneosService.getById(Number(id))
                 setTorneo(data)
                 
                 if (data.estado !== "Abierto para inscripción") {
@@ -94,7 +94,7 @@ export default function InscripcionTorneoPage() {
                 jugadores: JSON.stringify(data.jugadores)
             }
 
-            await inscribirEquipo(torneo.id, payload)
+            await TorneosService.inscribirEquipo(torneo.id, payload)
 
             await Swal.fire({
                 title: "¡Reserva iniciada!",

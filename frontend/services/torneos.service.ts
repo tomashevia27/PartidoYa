@@ -200,6 +200,44 @@ export interface ProgramarPartidoData {
   horario: string // "HH:MM:SS"
 }
 
+const ESTADO_MAP: Record<string, string> = {
+  "abierto": "Abierto para inscripción",
+  "en_curso": "En curso",
+  "finalizado": "Finalizado",
+  "cancelado": "Cancelado",
+}
+
+const FORMATO_MAP: Record<string, string> = {
+  "eliminacion_directa": "Eliminación directa",
+  "fase_grupos": "Fase de grupos",
+  "fase_grupos_8avos": "Fase de grupos + 8vos",
+  "fase_grupos_16avos": "Fase de grupos + 16vos",
+  "todos_contra_todos": "Todos contra todos",
+}
+
+function normalizarTorneo(t: any): TorneoData {
+  const equiposArray = Array.isArray(t.equipos_inscriptos)
+    ? t.equipos_inscriptos.map((eq: any) => ({
+      id: eq.id,
+      nombre_equipo: eq.nombre || eq.nombre_equipo,
+      jugadores: eq.jugadores || "[]",
+      escudo: eq.escudo
+    }))
+    : (t.equipos || []);
+  const inscriptosCount = Array.isArray(t.equipos_inscriptos) ? t.equipos_inscriptos.length : (t.inscriptos ?? t.equipos_inscriptos ?? 0);
+
+  return {
+    ...t,
+    estado: ESTADO_MAP[t.estado] ?? t.estado,
+    formato: FORMATO_MAP[t.formato] ?? t.formato,
+    costo_inscripcion: Number(t.costo_inscripcion ?? 0),
+    equipos_inscriptos: inscriptosCount,
+    equipos: equiposArray,
+    max_equipos: t.max_equipos ?? (inscriptosCount + (t.cupos_restantes || 0)),
+    cupos_restantes: t.cupos_restantes ?? (t.max_equipos ? t.max_equipos - inscriptosCount : 0),
+  }
+}
+
 export const TorneosService = {
   create: async (data: TorneoCreateData): Promise<TorneoData> => {
     try {
@@ -225,7 +263,8 @@ export const TorneosService = {
 
   getDisponibles: async (): Promise<TorneoData[]> => {
     try {
-      return await fetchApi(`/api/torneos/`, { method: "GET" }, TorneoArraySchema);
+      const data = await fetchApi(`/api/torneos/`, { method: "GET" }) as any[];
+      return TorneoArraySchema.parse(data.map(normalizarTorneo));
     } catch (error) {
       throw new Error(getErrorMessage(error) || "Error al cargar torneos abiertos");
     }
@@ -242,7 +281,7 @@ export const TorneosService = {
       ].map((t: any) => ({
           ...t,
           rol_usuario: t.rol
-      }));
+      })).map(normalizarTorneo);
       return TorneoArraySchema.parse(allTorneos);
     } catch (error) {
       throw new Error(getErrorMessage(error) || "Error al cargar los torneos del usuario");
@@ -251,7 +290,8 @@ export const TorneosService = {
 
   getById: async (id: number): Promise<TorneoData> => {
     try {
-      return await fetchApi(`/api/torneos/${id}`, { method: "GET" }, TorneoSchema);
+      const data = await fetchApi(`/api/torneos/${id}`, { method: "GET" }) as any;
+      return TorneoSchema.parse(normalizarTorneo(data));
     } catch (error) {
       throw new Error(getErrorMessage(error) || "Torneo no encontrado");
     }
@@ -394,5 +434,22 @@ export const TorneosService = {
     } catch (error) {
       throw new Error(getErrorMessage(error) || "Error de validación");
     }
-  }
+  },
+
+  // ── Aliases para compatibilidad con nombres históricos ──────────────────
+  getBracketTorneo: async (torneoId: number): Promise<BracketResponse> => {
+    try {
+      return await fetchApi(`/api/torneos/${torneoId}/bracket`);
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || "Error al cargar bracket");
+    }
+  },
+
+  getFixtureTorneo: async (torneoId: number): Promise<PartidoTorneoData[]> => {
+    try {
+      return await fetchApi(`/api/torneos/${torneoId}/partidos`, { method: "GET" });
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || "Error al cargar fixture");
+    }
+  },
 };

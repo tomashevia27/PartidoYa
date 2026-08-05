@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { PartidoTorneoData, cargarResultadoPartido } from "@/hooks/use-api"
+import { TorneosService, type PartidoTorneoData } from "@/services/torneos.service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -97,7 +97,7 @@ export function CargarResultadoModal({ partido, isOpen, onClose, onSuccess }: Pr
     try {
       const estadisticasPayload = Object.values(stats).filter(s => s.goles > 0 || s.amarillas > 0 || s.rojas > 0);
       
-      await cargarResultadoPartido(partido.id, {
+      await TorneosService.cargarResultadoPartido(partido.id, {
         goles_local: Number(golesLocal),
         goles_visitante: Number(golesVisitante),
         estadisticas_jugadores: estadisticasPayload

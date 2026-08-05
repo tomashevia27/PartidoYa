@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { crearReservaManual, type AgendaSlot } from "@/hooks/use-api"
+import { ReservasService, type AgendaSlot } from "@/services/reservas.service"
 import Swal from "sweetalert2"
 import { getErrorMessage } from "@/lib/api-client"
 
@@ -43,7 +43,7 @@ export function ManualReservationDialog({
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      await crearReservaManual({
+      await ReservasService.crearReservaManual({
         cancha_id: canchaId,
         fecha,
         horario,

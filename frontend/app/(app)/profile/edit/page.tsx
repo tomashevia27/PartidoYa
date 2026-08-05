@@ -18,11 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAuthContext } from "@/components/auth-provider"
-import {
-  getUserProfile,
-  updateUserProfile,
-  uploadImageToCloudinary,
-} from "@/hooks/use-api"
+import { UsersService } from "@/services/users.service"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ProfileEditSchema, type ProfileEditValues } from "@/lib/schemas"
@@ -62,7 +58,7 @@ export default function EditProfilePage() {
       if (!userId) return
 
       try {
-        const data = await getUserProfile()
+        const data = await UsersService.getProfile()
         reset({
           nombre: data.nombre,
           apellido: data.apellido,
@@ -107,7 +103,7 @@ export default function EditProfilePage() {
 
       if (foto) {
         try {
-          fotoUrl = await uploadImageToCloudinary(foto)
+          fotoUrl = await UsersService.uploadImage(foto)
         } catch {
           Swal.fire({
             title: "Error de imagen",
@@ -121,7 +117,7 @@ export default function EditProfilePage() {
         fotoUrl = avatarPreview
       }
 
-      await updateUserProfile({
+      await UsersService.updateProfile({
         nombre: data.nombre,
         apellido: data.apellido,
         edad: data.edad,
