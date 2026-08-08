@@ -31,7 +31,7 @@ export function useRegister() {
         foto_perfil: fotoUrl,
       }
 
-      await UsersService.register(userData as any)
+      await UsersService.register(userData)
       return data.email
     },
     onSuccess: (email) => {

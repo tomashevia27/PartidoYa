@@ -3,20 +3,38 @@ import { fetchApi, getErrorMessage, ApiError } from "@/lib/api-client";
 const CLOUD_NAME = "dzsrgcgq6"
 const UPLOAD_PRESET = "PartidoYa_preset"
 
-export interface UserData {
-  nombre: string
-  apellido: string
-  email?: string
-  password?: string
-  edad: number
-  genero: string
-  zona: string
-  rol: string
-  foto_perfil?: string
+export interface RegisterPayload {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  edad: number;
+  genero: string;
+  zona: string;
+  rol: string;
+  foto_perfil?: string;
 }
 
-export interface UserProfile extends UserData {
-  id: number
+export interface UpdateProfilePayload {
+  nombre: string;
+  apellido: string;
+  edad: number;
+  genero: string;
+  zona: string;
+  password?: string;
+  foto_perfil?: string;
+}
+
+export interface UserProfile {
+  id: number;
+  nombre: string;
+  apellido: string;
+  email: string;
+  edad: number;
+  genero: string;
+  zona: string;
+  rol: string;
+  foto_perfil?: string;
 }
 
 export const UsersService = {
@@ -41,7 +59,7 @@ export const UsersService = {
     return data.secure_url
   },
 
-  register: async (userData: UserData): Promise<UserProfile> => {
+  register: async (userData: RegisterPayload): Promise<UserProfile> => {
     try {
       return await fetchApi(`/registro`, {
         method: "POST",
@@ -77,7 +95,7 @@ export const UsersService = {
     }
   },
 
-  updateProfile: async (userData: Partial<UserData>): Promise<UserProfile> => {
+  updateProfile: async (userData: UpdateProfilePayload): Promise<UserProfile> => {
     try {
       return await fetchApi(`/usuarios/me`, {
         method: "PUT",
