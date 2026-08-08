@@ -423,7 +423,7 @@ export default function EstadisticasPage() {
                                                     }}
                                                 >
                                                     {c.nombre}
-                                                </button>
+                                                </Button>
                                             ))}
                                         </div>
                                     </div>

@@ -30,7 +30,6 @@ export default function CanchasPage() {
     const [filtroSuperficie, setFiltroSuperficie] = useState<string>("")
     const [filtroTamano, setFiltroTamano] = useState<string>("")
     const [filtroIluminacion, setFiltroIluminacion] = useState<string>("todas")
-    const { role } = useAuthContext()
 
     const formatearPrecio = (precio: number) => {
         return new Intl.NumberFormat("es-AR", {

@@ -18,7 +18,7 @@ from ..schemas.partido_torneo_schemas import (
     BracketResponse,
     FixtureResponse,
 )
-from ..schemas.partido_torneo_schemas import TopJugadorResponse, TablaPosicionResponse, VallaInvictaResponse
+from ..schemas.partido_torneo_schemas import TopJugadorResponse, TablaPosicionResponse, VallaInvictaResponse, PlayerStatPerMatchResponse
 from ..models.partido_torneo import PartidoTorneo
  
 
@@ -192,7 +192,7 @@ def obtener_tabla_posiciones(torneo_id: int, db: Session = Depends(get_db)):
     return partido_torneo_service.tabla_posiciones_torneo(db, torneo_id)
 
 
-@router.get("/{torneo_id}/jugador/{usuario_id}/estadisticas", response_model=list["PlayerStatPerMatchResponse"])
+@router.get("/{torneo_id}/jugador/{usuario_id}/estadisticas", response_model=list[PlayerStatPerMatchResponse])
 def obtener_estadisticas_jugador_en_torneo(torneo_id: int, usuario_id: int, db: Session = Depends(get_db)):
     return partido_torneo_service.estadisticas_jugador_por_torneo(db, torneo_id, usuario_id)
 

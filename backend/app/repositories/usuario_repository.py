@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from ..models.usuario_model import Usuario
 from ..schemas.usuario_schemas import UsuarioEdicion
+from ..core.security import get_password_hash
 
 
 def obtener_por_email(db: Session, email: str) -> Usuario | None:
@@ -44,7 +45,7 @@ def editar_usuario(db: Session, user_id: int, datos: UsuarioEdicion) -> Usuario 
     usuario.edad = datos.edad
     usuario.genero = datos.genero
     if datos.password:
-        usuario.password = datos.password
+        usuario.password = get_password_hash(datos.password)
     usuario.zona = datos.zona
     usuario.foto_perfil = datos.foto_perfil
 

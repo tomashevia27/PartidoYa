@@ -6,7 +6,7 @@ from ..models.usuario_model import Usuario
 from ..repositories import usuario_repository
 from ..schemas.usuario_schemas import UsuarioRegistro, UsuarioLogin
 from . import email_service
-from ..core.security import create_access_token
+from ..core.security import create_access_token, get_password_hash, verify_password
 
 
 def registrar(db: Session, usuario: UsuarioRegistro) -> dict:
@@ -21,7 +21,11 @@ def registrar(db: Session, usuario: UsuarioRegistro) -> dict:
     # Generar código de 6 dígitos
     code = f"{secrets.randbelow(10**6):06d}"
 
-    nuevo_usuario = Usuario(**usuario.model_dump(), confirmation_code=code, email_confirmado=False)
+    # Hashear la contraseña antes de guardarla
+    usuario_dict = usuario.model_dump()
+    usuario_dict["password"] = get_password_hash(usuario_dict["password"])
+
+    nuevo_usuario = Usuario(**usuario_dict, confirmation_code=code, email_confirmado=False)
     usuario_repository.guardar(db, nuevo_usuario)
 
     # El helper envía por API de Brevo según la configuración.
@@ -36,7 +40,7 @@ def registrar(db: Session, usuario: UsuarioRegistro) -> dict:
 def login(db: Session, datos: UsuarioLogin) -> dict:
     """Valida credenciales y devuelve JWT."""
     usuario = usuario_repository.obtener_por_email(db, datos.email)
-    if not usuario or usuario.password != datos.password:
+    if not usuario or not verify_password(datos.password, usuario.password):
         raise HTTPException(status_code=401, detail="Email o contraseña incorrectos")
     
     if not usuario.email_confirmado:
