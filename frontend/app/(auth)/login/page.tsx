@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,24 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { LoginSchema, type LoginValues } from "@/lib/schemas"
 
+function CheckSessionExpired() {
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams?.get("expired") === "true") {
+      Swal.fire({
+        title: "Sesión expirada",
+        text: "Tu sesión caducó. Por favor, ingresá nuevamente para continuar.",
+        icon: "info",
+        confirmButtonColor: "#FF6B4A"
+      })
+      window.history.replaceState(null, '', '/login')
+    }
+  }, [searchParams])
+
+  return null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuthContext()
@@ -31,21 +49,7 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" }
   })
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search)
-      if (urlParams.get("expired") === "true") {
-        Swal.fire({
-          title: "Sesión expirada",
-          text: "Tu sesión caducó. Por favor, ingresá nuevamente para continuar.",
-          icon: "info",
-          confirmButtonColor: "#FF6B4A"
-        })
-        // Remove param from URL without refreshing
-        window.history.replaceState({}, '', '/login')
-      }
-    }
-  }, [])
+
 
   const onSubmit = async (data: LoginValues) => {
     try {
@@ -93,6 +97,9 @@ export default function LoginPage() {
   }
   return (
     <div className="min-h-screen relative flex items-center justify-center overflow-hidden">
+      <Suspense fallback={null}>
+        <CheckSessionExpired />
+      </Suspense>
       {/* Background Image */}
       <div className="absolute inset-0">
         <Image
