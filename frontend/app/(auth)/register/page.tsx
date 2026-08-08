@@ -14,13 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { UsersService } from "@/services/users.service"
-import Swal from 'sweetalert2'
 import { Camera, Trophy, Users } from "lucide-react"
-import { getErrorMessage } from "@/lib/api-client"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { RegisterSchema, type RegisterValues } from "@/lib/schemas"
+import { useRegister } from "@/hooks/use-register"
 
 function SportsIcon({ className }: { className?: string }) {
   return (
@@ -76,45 +74,14 @@ export default function RegisterPage() {
     }
   }
 
+  const { mutateAsync } = useRegister()
+
   const onSubmit = async (data: RegisterValues) => {
-
     try {
-      let fotoUrl: string | undefined
-      if (foto) {
-        try {
-          fotoUrl = await UsersService.uploadImage(foto)
-        } catch {
-          Swal.fire({
-            title: "Error de imagen",
-            text: "Hubo un problema al subir tu foto de perfil. Por favor, intentá de nuevo.",
-            icon: "error",
-            confirmButtonColor: "#FF6B4A",
-          })
-          return
-        }
-      }
-
-      const userData = {
-        nombre: data.nombre,
-        apellido: data.apellido,
-        email: data.email,
-        password: data.password,
-        edad: data.edad,
-        genero: data.genero,
-        zona: data.zona,
-        rol: data.rol,
-        foto_perfil: fotoUrl,
-      }
-
-      await UsersService.register(userData as any)
-      router.push(`/confirm?email=${encodeURIComponent(data.email)}`)
-    } catch (error) {
-      Swal.fire({
-        title: "No se pudo registrar",
-        text: error instanceof Error ? getErrorMessage(error) : "No se pudo conectar con el servidor.",
-        icon: "error",
-        confirmButtonColor: "#FF6B4A",
-      })
+      await mutateAsync({ data, foto })
+    } catch (e) {
+      // El error ya es manejado visualmente por el hook useRegister a través de Swal, 
+      // pero capturamos aquí para que React Hook Form sepa que terminó la ejecución.
     }
   }
 
