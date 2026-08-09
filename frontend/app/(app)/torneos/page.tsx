@@ -1,22 +1,40 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Trophy, Calendar, Users, MapPin, Plus, Loader2, UserCheck, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { TorneosService, type TorneoData } from "@/services/torneos.service"
 import { useAuthContext } from "@/components/auth-provider"
 import { useTorneos, useMisTorneos } from "@/hooks/use-torneos-query"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 type MisTorneosCategory = "Próximos" | "En curso" | "Finalizados" | "Cancelados"
+type MisTorneosRole = "Todos" | "Organizados" | "Inscriptos"
+type TabType = "disponibles" | "mis-torneos"
 
-export default function TorneosPage() {
-    const [activeTab, setActiveTab] = useState<"disponibles" | "mis-torneos">("disponibles")
-    const [misTorneosCategory, setMisTorneosCategory] = useState<MisTorneosCategory>("Próximos")
-    const [misTorneosRole, setMisTorneosRole] = useState<"Todos" | "Organizados" | "Inscriptos">("Todos")
+function TorneosContent() {
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
     
     const { role } = useAuthContext()
+
+    // Leer estado de la URL o usar defaults
+    const activeTab = (searchParams.get("tab") as TabType) || (role === "admin" ? "mis-torneos" : "disponibles")
+    const misTorneosCategory = (searchParams.get("estado") as MisTorneosCategory) || "Próximos"
+    const misTorneosRole = (searchParams.get("rol") as MisTorneosRole) || "Todos"
+
+    const setUrlParam = useCallback((name: string, value: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set(name, value)
+        // Al cambiar de tab, reseteamos subfiltros para mejor UX
+        if (name === "tab") {
+            params.delete("estado")
+            params.delete("rol")
+        }
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+    }, [searchParams, pathname, router])
 
     const { 
         data: torneosDisponibles = [], 
@@ -30,12 +48,6 @@ export default function TorneosPage() {
 
     const torneos = activeTab === "disponibles" ? torneosDisponibles : misTorneos
     const isLoading = activeTab === "disponibles" ? isLoadingDisponibles : isLoadingMisTorneos
-
-    useEffect(() => {
-        if (role === "admin" && activeTab === "disponibles") {
-            setActiveTab("mis-torneos")
-        }
-    }, [role, activeTab])
 
     const formatearPrecio = (precio: number) => {
         return new Intl.NumberFormat("es-AR", {
@@ -114,7 +126,7 @@ export default function TorneosPage() {
                     <div className="bg-card rounded-2xl border border-border shadow-xl p-2 mb-6">
                     <div className="flex border-b border-border px-4">
                         <button
-                            onClick={() => setActiveTab("disponibles")}
+                            onClick={() => setUrlParam("tab", "disponibles")}
                             className={`px-6 py-3 font-medium text-sm transition-all relative ${
                                 activeTab === "disponibles" 
                                     ? "text-primary" 
@@ -127,7 +139,7 @@ export default function TorneosPage() {
                             )}
                         </button>
                         <button
-                            onClick={() => setActiveTab("mis-torneos")}
+                            onClick={() => setUrlParam("tab", "mis-torneos")}
                             className={`px-6 py-3 font-medium text-sm transition-all relative ${
                                 activeTab === "mis-torneos" 
                                     ? "text-primary" 
@@ -150,7 +162,7 @@ export default function TorneosPage() {
                             {(["Próximos", "En curso", "Finalizados", "Cancelados"] as MisTorneosCategory[]).map(cat => (
                                 <button
                                     key={cat}
-                                    onClick={() => setMisTorneosCategory(cat)}
+                                    onClick={() => setUrlParam("estado", cat)}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                         misTorneosCategory === cat 
                                             ? "bg-background text-foreground shadow-sm" 
@@ -167,7 +179,7 @@ export default function TorneosPage() {
                                 {(["Todos", "Organizados", "Inscriptos"] as const).map(rolCat => (
                                     <button
                                         key={rolCat}
-                                        onClick={() => setMisTorneosRole(rolCat)}
+                                        onClick={() => setUrlParam("rol", rolCat)}
                                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                                             misTorneosRole === rolCat 
                                                 ? "bg-background text-foreground shadow-sm border border-border/50" 
@@ -292,5 +304,18 @@ export default function TorneosPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function TorneosPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-muted-foreground">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p>Cargando torneos...</p>
+            </div>
+        }>
+            <TorneosContent />
+        </Suspense>
     )
 }
