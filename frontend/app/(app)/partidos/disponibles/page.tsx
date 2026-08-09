@@ -1,7 +1,8 @@
 "use client"
 import { getErrorMessage } from "@/lib/api-client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -37,27 +38,44 @@ function FootballIcon({ className }: { className?: string }) {
     )
 }
 
-export default function PartidosDisponiblesPage() {
+function PartidosDisponiblesContent() {
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const { data: userProfile, isSuccess: isProfileSuccess } = useProfile()
   const [hasInitializedZona, setHasInitializedZona] = useState(false)
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false)
-  const [filtroZona, setFiltroZona] = useState<string>("")
-  const [filtroModalidad, setFiltroModalidad] = useState<string>("")
-  const [filtroFecha, setFiltroFecha] = useState<string>("")
   const [userZona, setUserZona] = useState<string>("")
   const [isUsingUserZone, setIsUsingUserZone] = useState(true)
+
+  const filtroZona = searchParams.get("zona") || ""
+  const filtroModalidad = searchParams.get("modalidad") || ""
+  const filtroFecha = searchParams.get("fecha") || ""
+
+  const updateFilters = useCallback((key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) {
+      params.set(key, value)
+    } else {
+      params.delete(key)
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+  }, [searchParams, pathname, router])
 
   // Load user profile to get their zone
   useEffect(() => {
     if (isProfileSuccess && userProfile?.zona && !hasInitializedZona) {
       setUserZona(userProfile.zona)
-      setFiltroZona(userProfile.zona) // auto-set filter to user's zone
+      if (!searchParams.has("zona") && !searchParams.has("modalidad") && !searchParams.has("fecha")) {
+         updateFilters("zona", userProfile.zona)
+      }
       setHasInitializedZona(true)
     }
-  }, [isProfileSuccess, userProfile, hasInitializedZona])
+  }, [isProfileSuccess, userProfile, hasInitializedZona, searchParams, updateFilters])
 
   const currentFilters: PartidoDisponibleFilters = {
     zona: filtroZona || undefined,
@@ -79,10 +97,16 @@ export default function PartidosDisponiblesPage() {
   }, [filtroZona, userZona])
 
   const clearFilters = () => {
-    setFiltroZona(userZona) // reset to user's zone
-    setFiltroModalidad("")
-    setFiltroFecha("")
-    setIsUsingUserZone(true)
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("modalidad")
+    params.delete("fecha")
+    if (userZona) {
+      params.set("zona", userZona)
+      setIsUsingUserZone(true)
+    } else {
+      params.delete("zona")
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
   const hasActiveFilters = filtroZona !== userZona || filtroModalidad || filtroFecha
@@ -222,7 +246,7 @@ export default function PartidosDisponiblesPage() {
             </span>
             <button
               onClick={() => {
-                setFiltroZona("")
+                updateFilters("zona", "")
                 setIsUsingUserZone(false)
               }}
               className="text-primary hover:text-primary/80 text-xs underline"
@@ -246,7 +270,7 @@ export default function PartidosDisponiblesPage() {
             </label>
             <select
               value={filtroZona}
-              onChange={(e) => setFiltroZona(e.target.value)}
+              onChange={(e) => updateFilters("zona", e.target.value)}
               className="flex h-10 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas las zonas</option>
@@ -272,7 +296,7 @@ export default function PartidosDisponiblesPage() {
             </label>
             <select
               value={filtroModalidad}
-              onChange={(e) => setFiltroModalidad(e.target.value)}
+              onChange={(e) => updateFilters("modalidad", e.target.value)}
               className="flex h-10 w-full rounded-lg bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas las modalidades</option>
@@ -292,7 +316,7 @@ export default function PartidosDisponiblesPage() {
             <Input
               type="date"
               value={filtroFecha}
-              onChange={(e) => setFiltroFecha(e.target.value)}
+              onChange={(e) => updateFilters("fecha", e.target.value)}
               min={new Date().toISOString().split("T")[0]}
               className="bg-input border-0 h-10"
             />
@@ -344,7 +368,7 @@ export default function PartidosDisponiblesPage() {
               onClick={() => {
                 setShowFilters(true)
                 if (isUsingUserZone) {
-                  setFiltroZona("")
+                  updateFilters("zona", "")
                   setIsUsingUserZone(false)
                 }
               }}
@@ -496,5 +520,14 @@ export default function PartidosDisponiblesPage() {
     </div>
   
       </div>
-)
+    </div>
+  )
+}
+
+export default function PartidosDisponiblesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+      <PartidosDisponiblesContent />
+    </Suspense>
+  )
 }

@@ -15,7 +15,7 @@ Este documento mantiene el historial y progreso de las mejoras arquitectónicas,
 ---
 
 ## Slice 2: Core de Reservas y Partidos
-**Estado:** 🔄 En Proceso
+**Estado:** ✅ Completado
 
 **Hallazgos de Auditoría:**
 * **Filtración de Datos:** El esquema de respuesta de los partidos expone correos electrónicos y roles de todos los jugadores inscritos.
