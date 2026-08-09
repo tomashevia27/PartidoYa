@@ -1,7 +1,7 @@
 "use client"
 import { getErrorMessage } from "@/lib/api-client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -124,17 +124,21 @@ export default function PartidosDisponiblesPage() {
   }
 
   // Group partidos by date for visual organization
-  const partidosPorFecha = partidos.reduce(
-    (acc, partido) => {
-      const fecha = partido.fecha
-      if (!acc[fecha]) acc[fecha] = []
-      acc[fecha].push(partido)
-      return acc
-    },
-    {} as Record<string, PartidoData[]>
-  )
-
-  const fechasOrdenadas = Object.keys(partidosPorFecha).sort()
+  const { partidosPorFecha, fechasOrdenadas } = useMemo(() => {
+    const agrupados = partidos.reduce(
+      (acc, partido) => {
+        const fecha = partido.fecha
+        if (!acc[fecha]) acc[fecha] = []
+        acc[fecha].push(partido)
+        return acc
+      },
+      {} as Record<string, PartidoData[]>
+    )
+    return {
+      partidosPorFecha: agrupados,
+      fechasOrdenadas: Object.keys(agrupados).sort()
+    }
+  }, [partidos])
 
   return (
 
