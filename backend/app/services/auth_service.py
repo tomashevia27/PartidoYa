@@ -1,6 +1,9 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
 
 from ..models.usuario_model import Usuario
 from ..repositories import usuario_repository
@@ -26,13 +29,22 @@ def registrar(db: Session, usuario: UsuarioRegistro) -> dict:
     usuario_dict["password"] = get_password_hash(usuario_dict["password"])
 
     nuevo_usuario = Usuario(**usuario_dict, confirmation_code=code, email_confirmado=False)
-    usuario_repository.guardar(db, nuevo_usuario)
+    
+    # 1. Agregamos a la sesión sin comitear aún
+    db.add(nuevo_usuario)
+    db.flush()
 
-    # El helper envía por API de Brevo según la configuración.
+    # 2. Intentamos enviar el email, si falla deshacemos la DB
     try:
         email_service.send_confirmation_email(nuevo_usuario.email, code)
+        db.commit()
     except Exception as e:
-        print("Error enviando email de confirmación:", e)
+        db.rollback()
+        logger.error(f"Error enviando email de confirmación: {e}")
+        raise HTTPException(
+            status_code=503, 
+            detail="Servicio de correo temporalmente no disponible. No pudimos enviar tu código, por favor intenta más tarde."
+        )
 
     return {"mensaje": "Usuario registrado. Revisa tu email para confirmar la cuenta."}
 
@@ -82,14 +94,18 @@ def reenviar_codigo(db: Session, email: str) -> dict:
 
     code = f"{secrets.randbelow(10**6):06d}"
     usuario.confirmation_code = code
-    usuario_repository.guardar(db, usuario)
 
     try:
         email_service.send_confirmation_email(usuario.email, code)
+        usuario_repository.guardar(db, usuario) # Guardamos solo si se envió con éxito
     except Exception as e:
-        print("Error reenviando email:", e)
+        logger.error(f"Error reenviando email: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio de correo no disponible. Por favor intenta más tarde."
+        )
 
-    return {"mensaje": "Código reenviado (revisa tu email)."}
+    return {"mensaje": "Código reenviado (revisa tu email o consola)."}
 
 
 
