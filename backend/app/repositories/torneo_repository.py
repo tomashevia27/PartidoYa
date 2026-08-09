@@ -34,13 +34,13 @@ def verificar_jugadores_inscriptos(db: Session, torneo_id: int, jugador_ids: Lis
     ).all()
 
 def obtener_todos(db: Session, estado: Optional[EstadoTorneo] = None) -> List[Torneo]:
-    query = db.query(Torneo)
+    query = db.query(Torneo).options(joinedload(Torneo.equipos_inscriptos))
     if estado:
         query = query.filter(Torneo.estado == estado)
     return query.all()
 
 def obtener_torneos_por_usuario(db: Session, usuario_id: int) -> List[Torneo]:
-    return db.query(Torneo).distinct().join(
+    return db.query(Torneo).options(joinedload(Torneo.equipos_inscriptos)).distinct().join(
         Torneo.equipos_inscriptos, isouter=True
     ).join(
         Equipo.jugadores, isouter=True 
