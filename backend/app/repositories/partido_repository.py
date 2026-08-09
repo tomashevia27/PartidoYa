@@ -12,11 +12,19 @@ TZ_LOCAL = timezone(timedelta(hours=-3))
 
 def obtener_organizados_por_usuario(db: Session, usuario_id: int):
     """Obtiene los partidos organizados por un usuario."""
-    return db.query(Partido).filter(Partido.organizador_id == usuario_id).all()
+    return db.query(Partido).options(
+        joinedload(Partido.cancha),
+        joinedload(Partido.organizador),
+        joinedload(Partido.jugadores)
+    ).filter(Partido.organizador_id == usuario_id).all()
 
 def obtener_inscritos_por_usuario(db: Session, usuario_id: int):
     """Obtiene los partidos en los que un usuario está inscrito."""
-    return db.query(Partido).filter(Partido.jugadores.any(id=usuario_id)).all()
+    return db.query(Partido).options(
+        joinedload(Partido.cancha),
+        joinedload(Partido.organizador),
+        joinedload(Partido.jugadores)
+    ).filter(Partido.jugadores.any(id=usuario_id)).all()
 
 def obtener_por_id(db: Session, partido_id: int):
     """Obtiene un partido por su ID."""
@@ -33,7 +41,11 @@ def obtener_disponibles(db: Session, zona: str = None, modalidad: str = None, fe
     hoy = now.date()
     hora_actual = now.time()
 
-    query = db.query(Partido).join(Cancha).filter(
+    query = db.query(Partido).options(
+        joinedload(Partido.cancha),
+        joinedload(Partido.organizador),
+        joinedload(Partido.jugadores)
+    ).join(Cancha).filter(
         Partido.tipo == "abierto",
         Partido.cupos_disponibles > 0,
         Partido.estado != "Cancelado"
