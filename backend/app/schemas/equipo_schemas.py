@@ -1,6 +1,6 @@
 from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from .usuario_schemas import UsuarioRespuesta
+from .usuario_schemas import JugadorPublicoRespuesta
 
 class EquipoBase(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100, description="Nombre del equipo participante")
@@ -14,5 +14,5 @@ class EquipoResponse(EquipoBase):
     model_config = ConfigDict(from_attributes=True)
 
 class EquipoDetalleResponse(EquipoResponse):
-    jugadores: List[UsuarioRespuesta]
+    jugadores: List[JugadorPublicoRespuesta]
     model_config = ConfigDict(from_attributes=True)
