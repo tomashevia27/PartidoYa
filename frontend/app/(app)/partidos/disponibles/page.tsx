@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuthContext } from "@/components/auth-provider"
-import { UsersService, type UserProfile } from "@/services/users.service"
+import { useProfile } from "@/hooks/use-profile-query"
 import { PartidosService, type PartidoData, type PartidoDisponibleFilters, type FiltrosDisponiblesData } from "@/services/partidos.service"
 import { usePartidosDisponibles, useFiltrosDisponibles } from "@/hooks/use-partidos-query"
 
@@ -39,7 +39,8 @@ function FootballIcon({ className }: { className?: string }) {
 
 export default function PartidosDisponiblesPage() {
 
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const { data: userProfile, isSuccess: isProfileSuccess } = useProfile()
+  const [hasInitializedZona, setHasInitializedZona] = useState(false)
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false)
@@ -51,20 +52,12 @@ export default function PartidosDisponiblesPage() {
 
   // Load user profile to get their zone
   useEffect(() => {
-    async function loadProfile() {
-      try {
-        const profile = await UsersService.getProfile()
-        setUserProfile(profile)
-        if (profile.zona) {
-          setUserZona(profile.zona)
-          setFiltroZona(profile.zona) // auto-set filter to user's zone
-        }
-      } catch (e) {
-        console.warn("Error al cargar perfil:", e)
-      }
+    if (isProfileSuccess && userProfile?.zona && !hasInitializedZona) {
+      setUserZona(userProfile.zona)
+      setFiltroZona(userProfile.zona) // auto-set filter to user's zone
+      setHasInitializedZona(true)
     }
-    loadProfile()
-  }, [])
+  }, [isProfileSuccess, userProfile, hasInitializedZona])
 
   const currentFilters: PartidoDisponibleFilters = {
     zona: filtroZona || undefined,
