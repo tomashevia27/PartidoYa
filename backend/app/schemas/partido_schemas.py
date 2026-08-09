@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field, validator
 from typing import Optional, List
 from datetime import date, time
 
-from .usuario_schemas import UsuarioRespuesta
+from .usuario_schemas import UsuarioRespuesta, JugadorPublicoRespuesta
 
 class CanchaBasica(BaseModel):
     id: int
@@ -48,8 +48,8 @@ class PartidoRespuesta(BaseModel):
     descripcion: Optional[str]
     estado: str
     cancha: Optional[CanchaBasica] = None
-    organizador: Optional[UsuarioRespuesta] = None
-    jugadores: List[UsuarioRespuesta] = []
+    organizador: Optional[JugadorPublicoRespuesta] = None
+    jugadores: List[JugadorPublicoRespuesta] = []
     cliente_nombre: Optional[str] = None
     cliente_apellido: Optional[str] = None
     cliente_telefono: Optional[str] = None

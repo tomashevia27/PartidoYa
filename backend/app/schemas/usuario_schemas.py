@@ -51,3 +51,14 @@ class UsuarioRespuesta(BaseModel):
     zona: str
     rol: RolUsuario
     foto_perfil: Optional[str] = None
+
+# -----------------------------------------
+# Esquema Público (Evita exponer email y rol)
+# -----------------------------------------
+class JugadorPublicoRespuesta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    nombre: str
+    apellido: str
+    foto_perfil: Optional[str] = None

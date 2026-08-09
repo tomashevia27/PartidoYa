@@ -22,6 +22,7 @@ from app.models.torneo_model import Torneo
 from app.models.partido_torneo import PartidoTorneo
 from app.models.equipo_model import Equipo, equipo_jugadores
 from app.repositories.usuario_repository import guardar
+from app.core.security import get_password_hash
 
 
 
@@ -131,7 +132,10 @@ def seed_usuarios():
                 print(f"  - {datos['email']} ya existe, saltando...")
                 continue
 
-            usuario = Usuario(**datos)
+            datos_hash = datos.copy()
+            datos_hash["password"] = get_password_hash(datos["password"])
+
+            usuario = Usuario(**datos_hash)
             guardar(db, usuario)
             print(f"  + Creado: {datos['email']}")
 

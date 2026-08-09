@@ -88,7 +88,7 @@ export async function fetchApi<T>(
 
   // 6. Manejo estructurado de errores (4xx y 5xx)
   if (!response.ok) {
-    if (response.status === 401 && typeof window !== "undefined") {
+    if (response.status === 401 && typeof window !== "undefined" && !endpoint.includes("/login")) {
       window.dispatchEvent(new CustomEvent("auth:expired"));
       await new Promise(() => {}); // Detener ejecución mientras el enrutador de React procesa el evento
     }
