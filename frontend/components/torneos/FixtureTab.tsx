@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Fragment } from "react"
+import { useEffect, useState, Fragment, useMemo } from "react"
 import {
   TorneosService,
   type PartidoTorneoData,
@@ -266,15 +266,20 @@ function FixturePorFase({
   onProgramar: (p: PartidoTorneoData) => void
   onResultado: (p: PartidoTorneoData) => void
 }) {
-  const ORDEN_FASES = ["liga", "grupos", "dieciseisavos", "octavos", "cuartos", "semifinal", "final"]
+  const ORDEN_FASES = useMemo(() => ["liga", "grupos", "dieciseisavos", "octavos", "cuartos", "semifinal", "final"], [])
 
-  const porFase = partidos.reduce((acc, p) => {
-    if (!acc[p.fase]) acc[p.fase] = []
-    acc[p.fase].push(p)
-    return acc
-  }, {} as Record<string, PartidoTorneoData[]>)
+  const { porFase, fasesOrdenadas } = useMemo(() => {
+    const agrupados = partidos.reduce((acc, p) => {
+      if (!acc[p.fase]) acc[p.fase] = []
+      acc[p.fase].push(p)
+      return acc
+    }, {} as Record<string, PartidoTorneoData[]>)
 
-  const fasesOrdenadas = ORDEN_FASES.filter((f) => porFase[f])
+    return {
+      porFase: agrupados,
+      fasesOrdenadas: ORDEN_FASES.filter((f) => agrupados[f])
+    }
+  }, [partidos, ORDEN_FASES])
 
   return (
     <div className="space-y-10">
@@ -343,11 +348,16 @@ function BracketView({
     dieciseisavos: "Dieciseisavos de Final",
   }
 
-  // De más partidos (primera ronda) a menos (final)
-  const rondasOrdenadas = [...rondas].reverse()
-  const maxMatches = Math.max(...rondasOrdenadas.map(r => r.partidos.length), 1)
-  const CARD_SLOT = 180  // px por slot — totalHeight = espacio disponible para justify-around
-  const totalHeight = maxMatches * CARD_SLOT
+  const { rondasOrdenadas, maxMatches, totalHeight } = useMemo(() => {
+    const ordenadas = [...rondas].reverse()
+    const max = Math.max(...ordenadas.map(r => r.partidos.length), 1)
+    const CARD_SLOT = 180  // px por slot — totalHeight = espacio disponible para justify-around
+    return {
+      rondasOrdenadas: ordenadas,
+      maxMatches: max,
+      totalHeight: max * CARD_SLOT
+    }
+  }, [rondas])
 
   return (
     <div className="mt-10">
@@ -524,19 +534,26 @@ export function FixtureTab({ torneo, isOrganizer }: Props) {
   }
 
   // Separar fases de liga/grupos (con numero_fecha) de las eliminatorias
-  const fasesConFecha = ["liga", "grupos"]
-  const fasesEliminatorias = ["dieciseisavos", "octavos", "cuartos", "semifinal", "final"]
+  const fasesConFecha = useMemo(() => ["liga", "grupos"], [])
+  const fasesEliminatorias = useMemo(() => ["dieciseisavos", "octavos", "cuartos", "semifinal", "final"], [])
 
-  const tienePartidosConFecha = partidos.some(
-    (p) => fasesConFecha.includes(p.fase) && p.numero_fecha !== undefined && p.numero_fecha !== null
-  )
-  const tienePartidosFase = partidos.some((p) => fasesConFecha.includes(p.fase))
-  const tieneEliminatorias = partidos.some((p) => fasesEliminatorias.includes(p.fase))
-
-  // Partidos de fases de liga/grupos sin numero_fecha (fallback)
-  const partidosSinFecha = partidos.filter(
-    (p) => fasesConFecha.includes(p.fase) && !p.numero_fecha
-  )
+  const {
+    tienePartidosConFecha,
+    tienePartidosFase,
+    tieneEliminatorias,
+    partidosSinFecha
+  } = useMemo(() => {
+    return {
+      tienePartidosConFecha: partidos.some(
+        (p) => fasesConFecha.includes(p.fase) && p.numero_fecha !== undefined && p.numero_fecha !== null
+      ),
+      tienePartidosFase: partidos.some((p) => fasesConFecha.includes(p.fase)),
+      tieneEliminatorias: partidos.some((p) => fasesEliminatorias.includes(p.fase)),
+      partidosSinFecha: partidos.filter(
+        (p) => fasesConFecha.includes(p.fase) && !p.numero_fecha
+      )
+    }
+  }, [partidos, fasesConFecha, fasesEliminatorias])
 
   return (
     <div className="space-y-2">
