@@ -17,14 +17,26 @@ Este documento mantiene el historial y progreso de las mejoras arquitectónicas,
 ## Slice 2: Core de Reservas y Partidos
 **Estado:** ✅ Completado
 
+**Resumen de Mejoras:**
+1. **Escudo de Privacidad (Pydantic):** Implementación de `JugadorPublicoRespuesta` para omitir datos sensibles (email, rol, passwords) en el listado público de partidos.
+2. **Mitigación N+1 (SQLAlchemy):** Uso exhaustivo de `joinedload()` en repositorios para cargar relaciones complejas en una única consulta SQL (Eager Loading).
+3. **Filtros por URL (Next.js):** Sincronización bidireccional del estado de búsqueda con `useSearchParams` y límites lógicos mediante `<Suspense>`.
+4. **Optimización UI (React):** Memoización con `useMemo` del algoritmo de agrupación de partidos para prevenir micro-retrasos en renders no intencionales.
+5. **Seguridad Transaccional:** Validación del bloqueo pesimista (`with_for_update`) al procesar inscripciones.
+
+---
+
+## Slice 3: Core de Torneos y Sistema de Equipos
+**Estado:** 🔄 En Proceso (Auditoría Inicial)
+
 **Hallazgos de Auditoría:**
-* **Filtración de Datos:** El esquema de respuesta de los partidos expone correos electrónicos y roles de todos los jugadores inscritos.
-* **Ineficiencia de DB (N+1):** SQLAlchemy ejecuta múltiples subconsultas innecesarias al traer las relaciones de los partidos disponibles.
-* **Anti-patrones React/Next.js:** Uso ineficiente de estado local (`useState`) para filtros, impidiendo su uso en URLs, y carga duplicada de estado global (`useProfile`) mediante `useEffect`.
+* **Filtración de Datos (Equipos):** El esquema de respuesta de equipos expone correos y roles de todos los integrantes.
+* **Ineficiencia de DB (N+1):** El conteo de cupos restantes en torneos dispara subconsultas SQL masivas por cada torneo renderizado.
+* **God Components:** Los archivos de la interfaz gráfica de Torneos están masivamente acoplados (hasta 30 KB en un solo archivo), mezclando fetchers, filtros y renderizado de fixtures.
 
 **Plan de Acción (Definition of Done):**
-1. **Privacidad de Datos (Backend):** Crear y aplicar el esquema `JugadorPublicoRespuesta` para omitir datos sensibles (email).
-2. **Mitigar Consultas N+1 (Backend):** Inyectar Eager Loading (`joinedload`) en el repositorio para relaciones de Cancha, Organizador y Jugadores.
-3. **Refactorizar Fetching del Perfil (Frontend):** Sustituir el `useEffect` de carga de perfil por el hook existente `useProfile()` en el catálogo.
-4. **Optimización con `useMemo` (Frontend):** Prevenir renders costosos envolviendo la lógica de agrupación de fechas (`partidosPorFecha`).
-5. **Sincronización de Filtros en URL (Frontend):** Migrar el estado de filtros a `useSearchParams` para habilitar enlaces dinámicos y compartibles.
+1. **Sellar Fuga de Privacidad:** Modificar `EquipoDetalleResponse` para exponer un `JugadorPublicoRespuesta`.
+2. **Erradicar el N+1:** Implementar Eager Loading (`joinedload`) en el repositorio de Torneos.
+3. **Desacoplar "God Components":** Extraer lógica hacia subcomponentes independientes (Tabs, Headers).
+4. **Optimizar Renders (Frontend):** Implementar `useMemo` en cálculos pesados de rondas y fixtures.
+5. **Estandarizar Fetching:** Emplear React Query y sincronizar el estado de los filtros a la URL.

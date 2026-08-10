@@ -517,8 +517,6 @@ function PartidosDisponiblesContent() {
           ))}
         </div>
       )}
-    </div>
-  
       </div>
     </div>
   )

@@ -25,16 +25,18 @@ function TorneosContent() {
     const misTorneosCategory = (searchParams.get("estado") as MisTorneosCategory) || "Próximos"
     const misTorneosRole = (searchParams.get("rol") as MisTorneosRole) || "Todos"
 
-    const setUrlParam = useCallback((name: string, value: string) => {
+    // Funciones auxiliares para generar URLs de filtros
+    const getTabUrl = (tab: string) => `${pathname}?tab=${tab}`
+    const getEstadoUrl = (estado: string) => {
         const params = new URLSearchParams(searchParams.toString())
-        params.set(name, value)
-        // Al cambiar de tab, reseteamos subfiltros para mejor UX
-        if (name === "tab") {
-            params.delete("estado")
-            params.delete("rol")
-        }
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-    }, [searchParams, pathname, router])
+        params.set("estado", estado)
+        return `${pathname}?${params.toString()}`
+    }
+    const getRolUrl = (rol: string) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("rol", rol)
+        return `${pathname}?${params.toString()}`
+    }
 
     const { 
         data: torneosDisponibles = [], 
@@ -125,8 +127,9 @@ function TorneosContent() {
                 {role !== "admin" && (
                     <div className="bg-card rounded-2xl border border-border shadow-xl p-2 mb-6">
                     <div className="flex border-b border-border px-4">
-                        <button
-                            onClick={() => setUrlParam("tab", "disponibles")}
+                        <Link
+                            href={getTabUrl("disponibles")}
+                            scroll={false}
                             className={`px-6 py-3 font-medium text-sm transition-all relative ${
                                 activeTab === "disponibles" 
                                     ? "text-primary" 
@@ -137,9 +140,10 @@ function TorneosContent() {
                             {activeTab === "disponibles" && (
                                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
                             )}
-                        </button>
-                        <button
-                            onClick={() => setUrlParam("tab", "mis-torneos")}
+                        </Link>
+                        <Link
+                            href={getTabUrl("mis-torneos")}
+                            scroll={false}
                             className={`px-6 py-3 font-medium text-sm transition-all relative ${
                                 activeTab === "mis-torneos" 
                                     ? "text-primary" 
@@ -150,7 +154,7 @@ function TorneosContent() {
                             {activeTab === "mis-torneos" && (
                                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full" />
                             )}
-                        </button>
+                        </Link>
                     </div>
                   </div>
                 )}
@@ -160,9 +164,10 @@ function TorneosContent() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
                         <div className="flex gap-2 bg-muted p-1.5 rounded-lg inline-flex w-fit">
                             {(["Próximos", "En curso", "Finalizados", "Cancelados"] as MisTorneosCategory[]).map(cat => (
-                                <button
+                                <Link
                                     key={cat}
-                                    onClick={() => setUrlParam("estado", cat)}
+                                    href={getEstadoUrl(cat)}
+                                    scroll={false}
                                     className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                         misTorneosCategory === cat 
                                             ? "bg-background text-foreground shadow-sm" 
@@ -170,16 +175,17 @@ function TorneosContent() {
                                     }`}
                                 >
                                     {cat}
-                                </button>
+                                </Link>
                             ))}
                         </div>
                         
                         {role === "jugador" && (
                             <div className="flex gap-2 bg-muted p-1.5 rounded-lg inline-flex w-fit">
                                 {(["Todos", "Organizados", "Inscriptos"] as const).map(rolCat => (
-                                    <button
+                                    <Link
                                         key={rolCat}
-                                        onClick={() => setUrlParam("rol", rolCat)}
+                                        href={getRolUrl(rolCat)}
+                                        scroll={false}
                                         className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                                             misTorneosRole === rolCat 
                                                 ? "bg-background text-foreground shadow-sm border border-border/50" 
@@ -187,7 +193,7 @@ function TorneosContent() {
                                         }`}
                                     >
                                         {rolCat}
-                                    </button>
+                                    </Link>
                                 ))}
                             </div>
                         )}
