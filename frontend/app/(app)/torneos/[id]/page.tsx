@@ -30,9 +30,9 @@ export default function TorneoDetallePage() {
     const { data: fixture } = useTorneoFixture(torneoId)
     const { cancelarTorneo, bajarseTorneo } = useTorneoMutations()
 
-    const error = torneoError ? getErrorMessage(torneoError) : ""
+    const errorMessage = torneoError ? getErrorMessage(torneoError) : ""
 
-    if (isLoading) {
+    if (isLoading && !torneo) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center text-muted-foreground">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
@@ -41,13 +41,13 @@ export default function TorneoDetallePage() {
         )
     }
 
-    if (error || !torneo) {
+    if (!torneo) {
         return (
             <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
                 <div className="bg-card p-8 rounded-2xl border border-border text-center max-w-md w-full shadow-sm">
                     <Trophy className="h-16 w-16 text-muted-foreground opacity-50 mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-foreground mb-2">Ups, algo salió mal</h2>
-                    <p className="text-muted-foreground mb-6">{error}</p>
+                    <p className="text-muted-foreground mb-6">{errorMessage || "No se pudo cargar el torneo."}</p>
                     <Link href="/torneos">
                         <Button>Volver a Torneos</Button>
                     </Link>
