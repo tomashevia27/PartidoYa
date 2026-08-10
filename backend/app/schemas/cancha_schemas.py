@@ -5,7 +5,7 @@ from datetime import date
 # -----------------------------------------
 # US 4: Crear Cancha
 # -----------------------------------------
-class CanchaCreate(BaseModel):
+class CanchaBase(BaseModel):
     nombre: str = Field(..., min_length=1)
     tipo_superficie: str = Field(..., min_length=1)
     tamano: int = Field(..., gt=0)
@@ -18,6 +18,37 @@ class CanchaCreate(BaseModel):
     hora_cierre: str = Field(..., min_length=1)
     duracion_turno: int = Field(60, gt=0, description="Duración del turno en minutos")
     fotos: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validar_horarios(self):
+        ap = self.hora_apertura
+        ci = self.hora_cierre
+        
+        try:
+            ap_h, ap_m = map(int, ap.split(":"))
+            ci_h, ci_m = map(int, ci.split(":"))
+        except (ValueError, TypeError):
+            raise ValueError("El formato de hora debe ser HH:MM")
+
+        minutos_validos = {0, 15, 30, 45}
+        if ap_m not in minutos_validos:
+            raise ValueError("Los minutos de apertura deben ser 00, 15, 30 o 45")
+        if ci_m not in minutos_validos:
+            raise ValueError("Los minutos de cierre deben ser 00, 15, 30 o 45")
+
+        min_apertura = ap_h * 60 + ap_m
+        min_cierre = ci_h * 60 + ci_m
+        if min_cierre <= min_apertura:
+            raise ValueError("La hora de cierre debe ser posterior a la de apertura")
+            
+        duracion = self.duracion_turno or 60
+        if (min_cierre - min_apertura) % duracion != 0:
+            raise ValueError(f"El rango de horarios no es múltiplo de la duración del turno ({duracion} min), lo que dejaría slots incompletos")
+            
+        return self
+
+class CanchaCreate(CanchaBase):
+    pass
 
 class CanchaRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -63,19 +94,8 @@ class CanchaRespuesta(BaseModel):
 # -----------------------------------------
 # US 4: Editar Cancha
 # -----------------------------------------
-class CanchaUpdate(BaseModel):
-    nombre: str = Field(..., min_length=1)
-    tipo_superficie: str = Field(..., min_length=1)
-    tamano: int = Field(..., gt=0)
-    iluminacion: bool
-    zona: str = Field(..., min_length=1)
-    direccion: str = Field(..., min_length=1)
-    precio_por_turno: float = Field(..., gt=0, description="El precio debe ser mayor a cero")
-    dias_operativos: int = Field(..., description="Bitmask de días operativos (ej: 31 = Lun-Vie)")
-    hora_apertura: str = Field(..., min_length=1)
-    hora_cierre: str = Field(..., min_length=1)
-    duracion_turno: int = Field(60, gt=0, description="Duración del turno en minutos")
-    fotos: Optional[str] = None
+class CanchaUpdate(CanchaBase):
+    pass
 
 # -----------------------------------------
 # US 24: Agenda de la Cancha

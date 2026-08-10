@@ -182,23 +182,31 @@ export const CanchaFormSchema = z.object({
   cierre_h: z.string().min(1, "Requerido").regex(/^\d+$/, "Solo números"),
   cierre_m: z.enum(["00", "15", "30", "45"], { errorMap: () => ({ message: "Requerido" }) }),
 }).superRefine((data, ctx) => {
-  if (data.apertura_m !== data.cierre_m) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Los minutos de apertura y cierre deben coincidir para evitar turnos incompletos.",
-      path: ["cierre_m"]
-    });
-  }
-
   const ah = data.apertura_h.padStart(2, "0")
   const am = data.apertura_m
   const ch = data.cierre_h.padStart(2, "0")
   const cm = data.cierre_m
+  
   if (`${ah}:${am}` >= `${ch}:${cm}`) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "La hora de cierre debe ser posterior a la de apertura.",
       path: ["cierre_h"]
+    });
+    return;
+  }
+
+  const minApertura = parseInt(ah) * 60 + parseInt(am);
+  const minCierre = parseInt(ch) * 60 + parseInt(cm);
+  
+  // Asumimos 60 min por defecto ya que no está en el form, 
+  // pero el cálculo ahora es extensible.
+  const duracion = 60; 
+  if ((minCierre - minApertura) % duracion !== 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `El rango de horarios no es múltiplo de la duración del turno (${duracion} min).`,
+      path: ["cierre_m"]
     });
   }
 });
