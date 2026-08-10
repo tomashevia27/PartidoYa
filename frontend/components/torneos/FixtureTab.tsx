@@ -9,11 +9,11 @@ import {
   type RondaBracketData,
   type TorneoData,
 } from "@/services/torneos.service"
-import { useTorneoFixture, useTorneoMutations } from "@/hooks/use-torneos-query"
+import { useTorneoFixture, useTorneoMutations, useTorneoFixturePorFechas, useTorneoBracket } from "@/hooks/use-torneos-query"
 import { Button } from "@/components/ui/button"
 import { CargarResultadoModal } from "./CargarResultadoModal"
 import { ProgramarPartidoModal } from "./ProgramarPartidoModal"
-import { Loader2, Calendar, Trophy, Clock, GitFork, MapPin, Search, PlayCircle, PlusCircle, CheckCircle, Target, Users, Map } from "lucide-react"
+import { Loader2, Calendar, Trophy, Clock, GitFork } from "lucide-react"
 import { getErrorMessage } from "@/lib/api-client"
 import Swal from "sweetalert2"
 
@@ -208,15 +208,8 @@ function FixturePorFechas({
   onResultado: (p: PartidoTorneoData) => void
   partidos: PartidoTorneoData[]
 }) {
-  const [fechas, setFechas] = useState<FechaFixtureData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    TorneosService.getFixturePorFechas(torneoId)
-      .then((r) => setFechas(r.fechas))
-      .catch(() => setFechas([]))
-      .finally(() => setIsLoading(false))
-  }, [torneoId, partidos])
+  const { data, isLoading } = useTorneoFixturePorFechas(torneoId)
+  const fechas = data?.fechas || []
 
   if (isLoading) return <div className="py-8 flex justify-center"><Loader2 className="animate-spin" /></div>
 
@@ -327,15 +320,8 @@ function BracketView({
   onResultado: (p: PartidoTorneoData) => void
   partidos: PartidoTorneoData[]
 }) {
-  const [rondas, setRondas] = useState<RondaBracketData[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    TorneosService.getBracketTorneo(torneoId)
-      .then((r) => setRondas(r.rondas))
-      .catch(() => setRondas([]))
-      .finally(() => setIsLoading(false))
-  }, [torneoId, partidos])
+  const { data, isLoading } = useTorneoBracket(torneoId)
+  const rondas = data?.rondas || []
 
   if (isLoading) return <div className="py-8 flex justify-center"><Loader2 className="animate-spin" /></div>
   if (rondas.length === 0) return null

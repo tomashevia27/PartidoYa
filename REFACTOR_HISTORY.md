@@ -27,16 +27,11 @@ Este documento mantiene el historial y progreso de las mejoras arquitectónicas,
 ---
 
 ## Slice 3: Core de Torneos y Sistema de Equipos
-**Estado:** 🔄 En Proceso (Auditoría Inicial)
+**Estado:** ✅ Completado
 
-**Hallazgos de Auditoría:**
-* **Filtración de Datos (Equipos):** El esquema de respuesta de equipos expone correos y roles de todos los integrantes.
-* **Ineficiencia de DB (N+1):** El conteo de cupos restantes en torneos dispara subconsultas SQL masivas por cada torneo renderizado.
-* **God Components:** Los archivos de la interfaz gráfica de Torneos están masivamente acoplados (hasta 30 KB en un solo archivo), mezclando fetchers, filtros y renderizado de fixtures.
-
-**Plan de Acción (Definition of Done):**
-1. **Sellar Fuga de Privacidad:** Modificar `EquipoDetalleResponse` para exponer un `JugadorPublicoRespuesta`.
-2. **Erradicar el N+1:** Implementar Eager Loading (`joinedload`) en el repositorio de Torneos.
-3. **Desacoplar "God Components":** Extraer lógica hacia subcomponentes independientes (Tabs, Headers).
-4. **Optimizar Renders (Frontend):** Implementar `useMemo` en cálculos pesados de rondas y fixtures.
-5. **Estandarizar Fetching:** Emplear React Query y sincronizar el estado de los filtros a la URL.
+**Resumen de Mejoras:**
+1. **Sellar Fuga de Privacidad:** Modificación de `EquipoDetalleResponse` para exponer un `JugadorPublicoRespuesta` en lugar de datos sensibles.
+2. **Erradicar el N+1:** Implementación de Eager Loading (`joinedload`) en el repositorio de Torneos para cargar relaciones (equipos, creadores) eficientemente.
+3. **Desacoplar "God Components":** Descomposición de la vista masiva de Torneos en subcomponentes modulares e independientes (`FixtureTab`, `EquiposTab`, `InformacionTab`, `TorneoHeader`).
+4. **Optimizar Renders y Estabilidad (Frontend):** Implementación de `useMemo` en cálculos pesados de agrupamientos de fixtures, y corrección crítica de "race conditions" al regenerar el fixture, asegurando que la UI no colapse por errores transitorios de la caché.
+5. **Estandarizar Fetching (React Query):** Eliminación de fetchers manuales con `useEffect` (ej: `getFixturePorFechas` y `getBracketTorneo`) reemplazándolos completamente por hooks de TanStack Query. Migración del estado de los filtros del catálogo de torneos a URLs compartibles con `useSearchParams`.
