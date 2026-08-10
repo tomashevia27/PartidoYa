@@ -45,40 +45,38 @@ class AgendaBuilder:
         return self
 
     def inyectar_partidos(self, partidos: List, excluir_partido_id: Optional[int] = None, incluir_detalle: bool = False) -> 'AgendaBuilder':
-        """Cruza los slots vacíos con los partidos existentes en la base de datos."""
-        if not self.slots:
+        """Cruza los slots vacíos con los partidos existentes en la base de datos de forma O(N)."""
+        if not self.slots or not partidos:
             return self
 
-        duracion_td = timedelta(minutes=self.cancha.duracion_turno)
+        # Crear índice de partidos (Hash Map) con acceso O(1)
+        partidos_dict = {}
+        for p in partidos:
+            if excluir_partido_id is not None and p.id == excluir_partido_id:
+                continue
+            
+            # La llave será el string "HH:MM"
+            hora_str = p.horario.strftime("%H:%M")
+            # En caso remoto de colisión en DB, nos quedamos con el primero
+            if hora_str not in partidos_dict:
+                partidos_dict[hora_str] = p
 
+        # Recorrer la agenda y hacer lookup instantáneo O(1)
         for slot in self.slots:
-            slot_inicio = datetime.combine(self.fecha, datetime.strptime(slot["horario"], "%H:%M").time())
-            slot_fin = slot_inicio + duracion_td
-
-            for p in partidos:
-                if excluir_partido_id is not None and p.id == excluir_partido_id:
-                    continue
+            p = partidos_dict.get(slot["horario"])
+            if p:
+                slot["estado"] = "bloqueado" if getattr(p, "estado", None) == "bloqueado" else "ocupado"
                 
-                p_inicio = datetime.combine(p.fecha, p.horario)
-                p_fin = p_inicio + duracion_td
+                if incluir_detalle:
+                    slot["partido_id"] = p.id
+                    slot["cliente_nombre"] = getattr(p, "cliente_nombre", None) or "Torneo"
+                    slot["cliente_apellido"] = getattr(p, "cliente_apellido", None)
+                    slot["cliente_telefono"] = getattr(p, "cliente_telefono", None)
+                    organizador = getattr(p, "organizador", None)
+                    slot["organizador_nombre"] = organizador.nombre if organizador else None
+                    slot["organizador_apellido"] = organizador.apellido if organizador else None
+                    slot["es_reserva_manual"] = getattr(p, "reserva_manual", False) or False
 
-                # Si hay solapamiento de horarios
-                if slot_inicio < p_fin and slot_fin > p_inicio:
-                    # PartidoTorneo tiene estado "pendiente" o "finalizado", nunca "bloqueado"
-                    slot["estado"] = "bloqueado" if getattr(p, "estado", None) == "bloqueado" else "ocupado"
-                    
-                    if incluir_detalle:
-                        slot["partido_id"] = p.id
-                        # Campos que solo existen en Partido casual:
-                        slot["cliente_nombre"] = getattr(p, "cliente_nombre", None) or "Torneo"
-                        slot["cliente_apellido"] = getattr(p, "cliente_apellido", None)
-                        slot["cliente_telefono"] = getattr(p, "cliente_telefono", None)
-                        organizador = getattr(p, "organizador", None)
-                        slot["organizador_nombre"] = organizador.nombre if organizador else None
-                        slot["organizador_apellido"] = organizador.apellido if organizador else None
-                        slot["es_reserva_manual"] = getattr(p, "reserva_manual", False) or False
-                    break
-                    
         return self
 
     def build(self) -> List[Dict[str, Any]]:
