@@ -46,15 +46,28 @@ def _calcular_turnos_disponibles_dia(cancha: Cancha, fecha: date) -> int:
     return max(0, int(minutos_operacion // cancha.duracion_turno))
 
 
+def _obtener_patron_semanal_turnos(canchas: list[Cancha]) -> dict[int, int]:
+    """Pre-calcula la cantidad de turnos disponibles por día de la semana (0=Lunes... 6=Domingo)."""
+    patron = {i: 0 for i in range(7)}
+    fecha_ref = date(2024, 1, 1) # Lunes
+    for i in range(7):
+        fecha_eval = fecha_ref + timedelta(days=i)
+        for cancha in canchas:
+            if cancha.opera_en_fecha(fecha_eval):
+                apertura, cierre = cancha.obtener_rango_datetime()
+                minutos_operacion = (cierre - apertura).total_seconds() / 60
+                patron[i] += max(0, int(minutos_operacion // cancha.duracion_turno))
+    return patron
+
 def _calcular_turnos_totales_periodo(
     canchas: list[Cancha], fecha_desde: date, fecha_hasta: date
 ) -> int:
     """Calcula el total de turnos disponibles en un período para un conjunto de canchas."""
+    patron = _obtener_patron_semanal_turnos(canchas)
     total = 0
     fecha_actual = fecha_desde
     while fecha_actual <= fecha_hasta:
-        for cancha in canchas:
-            total += _calcular_turnos_disponibles_dia(cancha, fecha_actual)
+        total += patron[fecha_actual.weekday()]
         fecha_actual += timedelta(days=1)
     return total
 
@@ -62,8 +75,9 @@ def _calcular_turnos_totales_periodo(
 def _calcular_turnos_por_dia(
     canchas: list[Cancha], fecha: date
 ) -> int:
-    """Calcula el total de turnos disponibles de todas las canchas para un día."""
-    return sum(_calcular_turnos_disponibles_dia(c, fecha) for c in canchas)
+    """Calcula el total de turnos disponibles de todas las canchas para un día específico."""
+    patron = _obtener_patron_semanal_turnos(canchas)
+    return patron[fecha.weekday()]
 
 
 # ─────────────────────────────────────────────
@@ -146,7 +160,7 @@ def obtener_reservas_por_periodo(
     fecha_actual = fecha_desde
     while fecha_actual <= fecha_hasta:
         cantidad = mapa.get(fecha_actual, 0)
-        datos.append(schemas.ReservasDiarias(fecha=fecha_actual.isoformat(), cantidad=cantidad))
+        datos.append(schemas.ReservasDiarias(fecha=fecha_actual, cantidad=cantidad))
         total += cantidad
         fecha_actual += timedelta(days=1)
 
@@ -248,15 +262,16 @@ def obtener_ocupacion(
     reservas_diarias = estadistica_repository.obtener_reservas_diarias(db, cancha_ids, fecha_desde, fecha_hasta)
     mapa_reservas = {r[0]: r[1] for r in reservas_diarias}
 
+    patron = _obtener_patron_semanal_turnos(canchas)
     datos = []
     total_tasa = 0
     dias_count = 0
     fecha_actual = fecha_desde
     while fecha_actual <= fecha_hasta:
-        turnos_dia = _calcular_turnos_por_dia(canchas, fecha_actual)
+        turnos_dia = patron[fecha_actual.weekday()]
         reservas_dia = mapa_reservas.get(fecha_actual, 0)
         tasa = round((reservas_dia / turnos_dia * 100) if turnos_dia > 0 else 0, 1)
-        datos.append(schemas.OcupacionDiaria(fecha=fecha_actual.isoformat(), tasa=tasa))
+        datos.append(schemas.OcupacionDiaria(fecha=fecha_actual, tasa=tasa))
         total_tasa += tasa
         dias_count += 1
         fecha_actual += timedelta(days=1)
@@ -425,7 +440,7 @@ def obtener_ingresos(
     fecha_actual = fecha_desde
     while fecha_actual <= fecha_hasta:
         ingreso_dia = ingresos_por_dia.get(fecha_actual, 0.0)
-        datos.append(schemas.IngresoDiario(fecha=fecha_actual.isoformat(), ingreso=ingreso_dia))
+        datos.append(schemas.IngresoDiario(fecha=fecha_actual, ingreso=ingreso_dia))
         ingreso_total += ingreso_dia
         dias_count += 1
         fecha_actual += timedelta(days=1)
