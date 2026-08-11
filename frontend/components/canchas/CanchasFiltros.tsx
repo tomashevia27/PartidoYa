@@ -1,40 +1,55 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Search, Filter, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export function CanchasFiltros() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
+interface CanchasFiltrosProps {
+    searchTerm: string;
+    setSearchTerm: (val: string) => void;
+    filtroSuperficie: string;
+    setFiltroSuperficie: (val: string) => void;
+    filtroTamano: string;
+    setFiltroTamano: (val: string) => void;
+    filtroIluminacion: string;
+    setFiltroIluminacion: (val: string) => void;
+}
 
+export function CanchasFiltros({
+    searchTerm,
+    setSearchTerm,
+    filtroSuperficie,
+    setFiltroSuperficie,
+    filtroTamano,
+    setFiltroTamano,
+    filtroIluminacion,
+    setFiltroIluminacion
+}: CanchasFiltrosProps) {
     const [showFilters, setShowFilters] = useState(false)
+    const [localSearch, setLocalSearch] = useState(searchTerm)
 
-    // Leer valores de la URL
-    const searchTerm = searchParams.get("search") || ""
-    const filtroSuperficie = searchParams.get("superficie") || ""
-    const filtroTamano = searchParams.get("tamano") || ""
-    const filtroIluminacion = searchParams.get("iluminacion") || "todas"
+    // Debounce manual para evitar que la UI se cuelgue al escribir rápido
+    useEffect(() => {
+        setLocalSearch(searchTerm)
+    }, [searchTerm])
 
-    const hasActiveFilters = filtroSuperficie !== "" || filtroTamano !== "" || filtroIluminacion !== "todas"
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localSearch !== searchTerm) {
+                setSearchTerm(localSearch)
+            }
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [localSearch, searchTerm, setSearchTerm])
 
-    const updateFilter = (key: string, value: string) => {
-        const params = new URLSearchParams(searchParams)
-        if (value && value !== "todas") {
-            params.set(key, value)
-        } else {
-            params.delete(key)
-        }
-        router.push(`?${params.toString()}`)
-    }
+    const hasActiveFilters = searchTerm !== "" || filtroSuperficie !== "" || filtroTamano !== "" || filtroIluminacion !== "todas"
 
     const clearFilters = () => {
-        const params = new URLSearchParams(searchParams)
-        params.delete("superficie")
-        params.delete("tamano")
-        params.delete("iluminacion")
-        router.push(`?${params.toString()}`)
+        setSearchTerm("")
+        setLocalSearch("")
+        setFiltroSuperficie("")
+        setFiltroTamano("")
+        setFiltroIluminacion("todas")
     }
 
     return (
@@ -46,8 +61,8 @@ export function CanchasFiltros() {
                         <input
                             type="text"
                             placeholder="Buscar por nombre o zona..."
-                            value={searchTerm}
-                            onChange={(e) => updateFilter("search", e.target.value)}
+                            value={localSearch}
+                            onChange={(e) => setLocalSearch(e.target.value)}
                             className="w-full pl-12 pr-4 py-3 rounded-xl border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                         />
                     </div>
@@ -71,7 +86,7 @@ export function CanchasFiltros() {
                         <div className="relative">
                             <select
                                 value={filtroSuperficie}
-                                onChange={(e) => updateFilter("superficie", e.target.value)}
+                                onChange={(e) => setFiltroSuperficie(e.target.value)}
                                 className="flex h-10 w-full appearance-none rounded-lg bg-input px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="">Todas</option>
@@ -88,7 +103,7 @@ export function CanchasFiltros() {
                         <div className="relative">
                             <select
                                 value={filtroTamano}
-                                onChange={(e) => updateFilter("tamano", e.target.value)}
+                                onChange={(e) => setFiltroTamano(e.target.value)}
                                 className="flex h-10 w-full appearance-none rounded-lg bg-input px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="">Todos</option>
@@ -105,7 +120,7 @@ export function CanchasFiltros() {
                         <div className="relative">
                             <select
                                 value={filtroIluminacion}
-                                onChange={(e) => updateFilter("iluminacion", e.target.value)}
+                                onChange={(e) => setFiltroIluminacion(e.target.value)}
                                 className="flex h-10 w-full appearance-none rounded-lg bg-input px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="todas">Todas</option>
