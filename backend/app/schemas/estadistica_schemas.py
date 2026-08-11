@@ -14,7 +14,7 @@ class KpiResumen(BaseModel):
     reservas_mes: int
     tasa_ocupacion_hoy: float  # porcentaje (0-100)
     ingreso_estimado_mes: float
-    proxima_reserva_fecha: Optional[str] = None
+    proxima_reserva_fecha: Optional[date] = None
     proxima_reserva_horario: Optional[str] = None
     proxima_reserva_cancha: Optional[str] = None
 
@@ -24,7 +24,7 @@ class KpiResumen(BaseModel):
 # ─────────────────────────────────────────────
 
 class ReservasDiarias(BaseModel):
-    fecha: str
+    fecha: date
     cantidad: int
 
 class ReservasPorPeriodoRespuesta(BaseModel):
@@ -76,7 +76,7 @@ class MapaCalorRespuesta(BaseModel):
 # ─────────────────────────────────────────────
 
 class OcupacionDiaria(BaseModel):
-    fecha: str
+    fecha: date
     tasa: float  # porcentaje 0-100
 
 class OcupacionRespuesta(BaseModel):
@@ -139,7 +139,7 @@ class ComparativaCanchasRespuesta(BaseModel):
 # ─────────────────────────────────────────────
 
 class IngresoDiario(BaseModel):
-    fecha: str
+    fecha: date
     ingreso: float
 
 class IngresosRespuesta(BaseModel):

@@ -1,8 +1,10 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
+import { MapaCalorRespuestaDTO, MapaCalorCeldaDTO } from "./types"
+
 interface MapaCalorChartProps {
-    mapaCalor: any;
+    mapaCalor?: MapaCalorRespuestaDTO;
 }
 
 export function MapaCalorChart({ mapaCalor }: MapaCalorChartProps) {
@@ -21,10 +23,10 @@ export function MapaCalorChart({ mapaCalor }: MapaCalorChartProps) {
 
     const horas = Array.from({length: 16}, (_, i) => `${(i+8).toString().padStart(2, '0')}:00`);
     const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-    const maxCantidad = Math.max(...mapaCalor.datos.map((d: any) => d.cantidad), 1);
+    const maxCantidad = Math.max(...mapaCalor.datos.map((d: MapaCalorCeldaDTO) => d.cantidad), 1);
     
     const getIntensity = (dia_num: number, hora: string) => {
-        const cell = mapaCalor.datos.find((d: any) => d.dia_numero === dia_num && d.hora === hora);
+        const cell = mapaCalor.datos.find((d: MapaCalorCeldaDTO) => d.dia_numero === dia_num && d.hora === hora);
         if (!cell || cell.cantidad === 0) return 'bg-slate-100 dark:bg-slate-800';
         
         const ratio = cell.cantidad / maxCantidad;
@@ -54,7 +56,7 @@ export function MapaCalorChart({ mapaCalor }: MapaCalorChartProps) {
                                 </div>
                                 {dias.map((d, i) => {
                                     const intensityClass = getIntensity(i, hora);
-                                    const cellData = mapaCalor.datos.find((data: any) => data.dia_numero === i && data.hora === hora);
+                                    const cellData = mapaCalor.datos.find((data: MapaCalorCeldaDTO) => data.dia_numero === i && data.hora === hora);
                                     return (
                                         <div 
                                             key={`${d}-${hora}`} 

@@ -1,14 +1,22 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis } from "recharts"
+import { 
+    DistribucionTipoRespuestaDTO, 
+    DistribucionModalidadRespuestaDTO, 
+    CancelacionesRespuestaDTO, 
+    ReservasPorDiaSemanaRespuestaDTO,
+    TipoReservaItemDTO,
+    ModalidadItemDTO
+} from "./types"
 
 const COLORS = ['#ea580c', '#c2410c', '#9a3412', '#7f1d1d', '#f97316'];
 
 interface DistribucionChartsProps {
-    distTipo: any;
-    distModalidad: any;
-    cancelaciones: any;
-    diasSemana: any;
+    distTipo?: DistribucionTipoRespuestaDTO;
+    distModalidad?: DistribucionModalidadRespuestaDTO;
+    cancelaciones?: CancelacionesRespuestaDTO;
+    diasSemana?: ReservasPorDiaSemanaRespuestaDTO;
 }
 
 export function DistribucionCharts({ distTipo, distModalidad, cancelaciones, diasSemana }: DistribucionChartsProps) {
@@ -36,7 +44,7 @@ export function DistribucionCharts({ distTipo, distModalidad, cancelaciones, dia
                                     nameKey="tipo"
                                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                 >
-                                    {distTipo.datos.map((entry: any, index: number) => (
+                                    {distTipo.datos.map((entry: TipoReservaItemDTO, index: number) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -69,7 +77,7 @@ export function DistribucionCharts({ distTipo, distModalidad, cancelaciones, dia
                                     nameKey="modalidad"
                                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                                 >
-                                    {distModalidad.datos.map((entry: any, index: number) => (
+                                    {distModalidad.datos.map((entry: ModalidadItemDTO, index: number) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -134,7 +142,7 @@ export function DistribucionCharts({ distTipo, distModalidad, cancelaciones, dia
                             <YAxis dataKey="dia" type="category" width={80} tickFormatter={(val) => val.substring(0, 3)} />
                             <RechartsTooltip 
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                formatter={(value: any) => [`${value} reservas`, 'Cantidad']}
+                                formatter={(value: number) => [`${value} reservas`, 'Cantidad']}
                             />
                             <Bar dataKey="cantidad" name="Reservas" fill="#c2410c" radius={[0, 4, 4, 0]} />
                         </BarChart>

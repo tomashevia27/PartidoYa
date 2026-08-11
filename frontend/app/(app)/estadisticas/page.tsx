@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useMemo } from "react"
 import { useAuthContext } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,6 +16,7 @@ import { EvolucionChart } from "@/components/estadisticas/EvolucionChart"
 import { MapaCalorChart } from "@/components/estadisticas/MapaCalorChart"
 import { DistribucionCharts } from "@/components/estadisticas/DistribucionCharts"
 import { ComparativaChart } from "@/components/estadisticas/ComparativaChart"
+import { ReservasDiariasDTO } from "@/components/estadisticas/types"
 
 export default function EstadisticasPage() {
     const { role, isLoading: authLoading } = useAuthContext()
@@ -72,11 +73,13 @@ export default function EstadisticasPage() {
 
     if (authLoading || role !== "admin") return null
 
-    const combinedData = reservasPeriodo?.datos.map((item: any, index: number) => ({
-        fecha: item.fecha,
-        cantidad: item.cantidad,
-        tasa: ocupacion?.datos[index]?.tasa || 0
-    })) || []
+    const combinedData = useMemo(() => {
+        return reservasPeriodo?.datos.map((item: ReservasDiariasDTO, index: number) => ({
+            fecha: item.fecha,
+            cantidad: item.cantidad,
+            tasa: ocupacion?.datos[index]?.tasa || 0
+        })) || []
+    }, [reservasPeriodo, ocupacion])
 
     return (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -92,7 +95,7 @@ export default function EstadisticasPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="todas">Todas mis canchas</SelectItem>
-                            {canchas.map((c: any) => (
+                            {canchas.map((c: { id: number; nombre: string }) => (
                                 <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>
                             ))}
                         </SelectContent>
@@ -114,7 +117,6 @@ export default function EstadisticasPage() {
                 </div>
             </div>
 
-            {loading ? (
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>

@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts"
 
+import { ComparativaCanchasRespuestaDTO, CanchaEstadisticaDTO } from "./types"
+
 interface ComparativaChartProps {
-    comparativa: any;
-    canchas: any[];
+    comparativa?: ComparativaCanchasRespuestaDTO;
+    canchas: { id: number; nombre: string }[];
     selectedCancha: string;
 }
 
@@ -28,7 +30,7 @@ export function ComparativaChart({ comparativa, canchas, selectedCancha }: Compa
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <CardTitle>Comparativa de Rendimiento por Cancha</CardTitle>
                     <div className="flex flex-wrap gap-2">
-                        {canchas.map((c: any) => (
+                        {canchas.map((c: { id: number; nombre: string }) => (
                             <Button
                                 key={c.id}
                                 variant={canchasComparar.includes(c.id) ? "default" : "outline"}
@@ -49,7 +51,7 @@ export function ComparativaChart({ comparativa, canchas, selectedCancha }: Compa
             </CardHeader>
             <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={comparativa.datos.filter((d: any) => canchasComparar.includes(d.cancha_id))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart data={comparativa.datos.filter((d: CanchaEstadisticaDTO) => canchasComparar.includes(d.cancha_id))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ccc" opacity={0.5} />
                         <XAxis dataKey="nombre" />
                         <YAxis allowDecimals={false} />

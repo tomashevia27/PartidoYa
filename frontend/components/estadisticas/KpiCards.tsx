@@ -1,8 +1,10 @@
 import React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
+import { KpiResumenDTO } from "./types"
+
 interface KpiCardsProps {
-    kpis: any;
+    kpis?: KpiResumenDTO;
 }
 
 export function KpiCards({ kpis }: KpiCardsProps) {

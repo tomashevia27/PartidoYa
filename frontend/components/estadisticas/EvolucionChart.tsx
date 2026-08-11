@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Bar, Line, ResponsiveContainer } from "recharts"
 
 interface EvolucionChartProps {
-    combinedData: any[];
+    combinedData: { fecha: string; cantidad: number; tasa: number }[];
 }
 
 export function EvolucionChart({ combinedData }: EvolucionChartProps) {
