@@ -63,16 +63,16 @@ Este documento mantiene el historial y progreso de las mejoras arquitectónicas,
 ---
 
 ## Slice 6: Sistema de Notificaciones (Alertas)
-**Estado:** 🔄 En Proceso (Auditoría Inicial)
+**Estado:** ✅ Completado
 
 **Hallazgos de Auditoría:**
 * **Contratos Débiles (Tipado Abierto):** En Pydantic (`notificacion_schemas.py`), el tipo de alerta viaja como un `str` genérico. El frontend mapea los íconos de la campanita haciendo un `switch` con strings quemados, lo que expone al sistema a fallos silenciosos por errores de tipeo o desajustes entre front y back.
 * **Cuello de Botella Síncrono:** La generación de notificaciones (`crear_notificaciones_bulk`) bloquea el hilo principal de los requests. Ej: si se cancela un torneo, el servidor detiene la respuesta HTTP al organizador hasta terminar de escribir todas las alertas de los jugadores en la DB.
 * **Polling Manual Anti-Patrón:** El frontend utiliza un `setInterval` manual acoplado a un `useState` local en `useNotifications`. Esto puede causar desincronización entre múltiples pestañas, duplicidad de peticiones e incapacidad de limpiar la caché eficientemente.
 
-**Plan de Acción (Definition of Done):**
-1. 🔄 **Tipado Literal Defensivo (Contratos):** Restringir el tipo `str` en Pydantic y TypeScript a tipos Literales estrictos (Enum) garantizando integridad de eventos.
-2. 🔄 **Delegación Asíncrona (BackgroundTasks):** Envolver los servicios de inyección de alertas en `BackgroundTasks` de FastAPI, liberando la respuesta HTTP de manera inmediata.
-3. 🔄 **Estandarización a React Query (Polling):** Erradicar el `setInterval` manual migrando la campanita de notificaciones a un `useQuery` nativo con `refetchInterval` para sincronización multi-pestaña.
-4. 🔄 **Actualizaciones Optimistas (useMutation):** Migrar acciones de "marcar como leído" o "eliminar" a mutations de TanStack Query para que la UI reaccione instantáneamente sin esperar al servidor.
-5. 🔄 **Auditoría de Índices SQL:** Comprobar que la BD consulte mediante un índice compuesto `(usuario_id, leida)` optimizado para lectura intensa O(log N).
+**Plan de Acción (Ejecutado):**
+1. ✅ **Tipado Literal Defensivo (Contratos):** Restringir el tipo `str` en Pydantic y TypeScript a tipos Literales estrictos (Enum) garantizando integridad de eventos.
+2. ✅ **Delegación Asíncrona (BackgroundTasks):** Envolver los servicios de inyección de alertas en `BackgroundTasks` de FastAPI, liberando la respuesta HTTP de manera inmediata.
+3. ✅ **Estandarización a React Query (Polling):** Erradicar el `setInterval` manual migrando la campanita de notificaciones a un `useQuery` nativo con `refetchInterval` para sincronización multi-pestaña.
+4. ✅ **Actualizaciones Optimistas (useMutation):** Migrar acciones de "marcar como leído" o "eliminar" a mutations de TanStack Query para que la UI reaccione instantáneamente sin esperar al servidor.
+5. ✅ **Auditoría de Índices SQL:** Comprobar que la BD consulte mediante un índice compuesto `(usuario_id, leida)` optimizado para lectura intensa O(log N).

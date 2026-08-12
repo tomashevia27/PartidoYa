@@ -1,10 +1,13 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from ..core.db import Base
 
 
 class Notificacion(Base):
     __tablename__ = "notificaciones"
+    __table_args__ = (
+        Index("idx_notificaciones_usuario_leida", "usuario_id", "leida"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)

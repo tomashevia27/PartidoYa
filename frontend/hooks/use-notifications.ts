@@ -1,106 +1,123 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { NotificacionesService, type NotificacionData } from "@/services/notificaciones.service"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { NotificacionesService, type NotificacionesListado } from "@/services/notificaciones.service"
 
 const POLLING_INTERVAL = 30000 // 30 segundos
 
-export function useNotifications() {
-  const [notificaciones, setNotificaciones] = useState<NotificacionData[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+export function useNotifications(isOpen: boolean = false) {
+  const queryClient = useQueryClient()
 
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const data = await NotificacionesService.getConteoNoLeidas()
-      setUnreadCount(data.total_no_leidas)
-    } catch {
-      // Silenciar errores de polling para no molestar al usuario
-    }
-  }, [])
+  // 1. Polling silencioso del conteo (cada 30s, no importa si está cerrado)
+  const { data: unreadData } = useQuery({
+    queryKey: ["notificaciones", "count"],
+    queryFn: () => NotificacionesService.getConteoNoLeidas(),
+    refetchInterval: POLLING_INTERVAL,
+  })
 
-  const fetchNotificaciones = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await NotificacionesService.getAll()
-      setNotificaciones(data.notificaciones)
-      setUnreadCount(data.total_no_leidas)
-    } catch {
-      // Error silenciado
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+  // 2. Carga de la lista completa (solo se ejecuta si el panel está abierto)
+  const { data: listData, isLoading } = useQuery({
+    queryKey: ["notificaciones", "list"],
+    queryFn: () => NotificacionesService.getAll(),
+    enabled: isOpen,
+  })
 
-  const markAsRead = useCallback(async (id: number) => {
-    try {
-      await NotificacionesService.marcarLeida(id)
-      setNotificaciones((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, leida: true } : n))
-      )
-      setUnreadCount((prev) => Math.max(0, prev - 1))
-    } catch {
-      // Error silenciado
-    }
-  }, [])
+  // Determinamos el conteo final: Si el panel está abierto, usamos la cuenta de la lista que está sincronizada con los items visibles.
+  const unreadCount = (isOpen && listData) ? listData.total_no_leidas : (unreadData?.total_no_leidas || 0)
+  const notificaciones = listData?.notificaciones || []
 
-  const markAllAsRead = useCallback(async () => {
-    try {
-      await NotificacionesService.marcarTodasLeidas()
-      setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })))
-      setUnreadCount(0)
-    } catch {
-      // Error silenciado
-    }
-  }, [])
-
-  const deleteNotification = useCallback(async (id: number) => {
-    try {
-      await NotificacionesService.eliminar(id)
-      setNotificaciones((prev) => {
-        const notif = prev.find((n) => n.id === id)
-        if (notif && !notif.leida) {
-          setUnreadCount((c) => Math.max(0, c - 1))
+  // Mutación: Marcar como Leída
+  const markAsRead = useMutation({
+    mutationFn: (id: number) => NotificacionesService.marcarLeida(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notificaciones"] })
+      
+      // Update local list
+      queryClient.setQueryData<NotificacionesListado>(["notificaciones", "list"], (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          notificaciones: old.notificaciones.map((n) => n.id === id ? { ...n, leida: true } : n),
+          total_no_leidas: Math.max(0, old.total_no_leidas - 1)
         }
-        return prev.filter((n) => n.id !== id)
       })
-    } catch {
-      // Error silenciado
+      // Update local count
+      queryClient.setQueryData(["notificaciones", "count"], (old: any) => ({
+        total_no_leidas: Math.max(0, (old?.total_no_leidas || 0) - 1)
+      }))
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notificaciones"] })
     }
-  }, [])
+  })
 
-  const deleteAll = useCallback(async () => {
-    try {
-      await NotificacionesService.eliminarTodas()
-      setNotificaciones([])
-      setUnreadCount(0)
-    } catch {
-      // Error silenciado
+  // Mutación: Marcar Todas como Leídas
+  const markAllAsRead = useMutation({
+    mutationFn: () => NotificacionesService.marcarTodasLeidas(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notificaciones"] })
+      
+      queryClient.setQueryData<NotificacionesListado>(["notificaciones", "list"], (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          notificaciones: old.notificaciones.map((n) => ({ ...n, leida: true })),
+          total_no_leidas: 0
+        }
+      })
+      queryClient.setQueryData(["notificaciones", "count"], { total_no_leidas: 0 })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notificaciones"] })
     }
-  }, [])
+  })
 
-  // Polling para el conteo de no leídas
-  useEffect(() => {
-    fetchUnreadCount()
+  // Mutación: Eliminar una
+  const deleteNotification = useMutation({
+    mutationFn: (id: number) => NotificacionesService.eliminar(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["notificaciones"] })
+      
+      queryClient.setQueryData<NotificacionesListado>(["notificaciones", "list"], (old) => {
+        if (!old) return old
+        const notif = old.notificaciones.find(n => n.id === id)
+        const isUnread = notif && !notif.leida
+        
+        const newCount = isUnread ? Math.max(0, old.total_no_leidas - 1) : old.total_no_leidas
+        queryClient.setQueryData(["notificaciones", "count"], { total_no_leidas: newCount })
 
-    intervalRef.current = setInterval(fetchUnreadCount, POLLING_INTERVAL)
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
+        return {
+          ...old,
+          notificaciones: old.notificaciones.filter((n) => n.id !== id),
+          total_no_leidas: newCount
+        }
+      })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notificaciones"] })
     }
-  }, [fetchUnreadCount])
+  })
+
+  // Mutación: Eliminar todas
+  const deleteAll = useMutation({
+    mutationFn: () => NotificacionesService.eliminarTodas(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notificaciones"] })
+      queryClient.setQueryData<NotificacionesListado>(["notificaciones", "list"], { notificaciones: [], total_no_leidas: 0 })
+      queryClient.setQueryData(["notificaciones", "count"], { total_no_leidas: 0 })
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["notificaciones"] })
+    }
+  })
 
   return {
     notificaciones,
     unreadCount,
     isLoading,
-    fetchNotificaciones,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    deleteAll,
+    markAsRead: (id: number) => markAsRead.mutate(id),
+    markAllAsRead: () => markAllAsRead.mutate(),
+    deleteNotification: (id: number) => deleteNotification.mutate(id),
+    deleteAll: () => deleteAll.mutate(),
   }
 }

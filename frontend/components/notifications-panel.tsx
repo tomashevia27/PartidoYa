@@ -140,19 +140,13 @@ export function NotificationsPanel() {
     notificaciones,
     unreadCount,
     isLoading,
-    fetchNotificaciones,
     markAsRead,
     markAllAsRead,
     deleteNotification,
     deleteAll,
-  } = useNotifications()
+  } = useNotifications(isOpen)
 
-  // Cargar notificaciones al abrir
-  useEffect(() => {
-    if (isOpen) {
-      fetchNotificaciones()
-    }
-  }, [isOpen, fetchNotificaciones])
+  // Cargar notificaciones al abrir (ahora manejado automáticamente por React Query mediante enabled: isOpen)
 
   // Cerrar panel al hacer clic fuera
   useEffect(() => {
