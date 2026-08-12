@@ -18,7 +18,7 @@ import {
   BellOff,
 } from "lucide-react"
 import { useNotifications } from "@/hooks/use-notifications"
-import { type NotificacionData } from "@/services/notificaciones.service"
+import { type NotificacionData, type TipoNotificacion } from "@/services/notificaciones.service"
 
 function getTimeAgo(fechaStr: string): string {
   const fecha = new Date(fechaStr)
@@ -36,7 +36,7 @@ function getTimeAgo(fechaStr: string): string {
   return fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
 }
 
-function getNotificationIcon(tipo: string) {
+function getNotificationIcon(tipo: TipoNotificacion) {
   const iconProps = { className: "h-4 w-4 shrink-0" }
 
   switch (tipo) {

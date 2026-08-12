@@ -51,17 +51,28 @@ Este documento mantiene el historial y progreso de las mejoras arquitectónicas,
 ---
 
 ## Slice 5: Estadísticas y Dashboard
+**Estado:** ✅ Completado
+
+**Resumen de Mejoras:**
+1. **Desacoplar el Dashboard (Dumb Components):** Se extrajeron los gráficos de Recharts hacia subcomponentes modulares e independientes (`KpiCards`, `EvolucionChart`, `MapaCalorChart`, etc.) reduciendo el "God Component" en un 60%.
+2. **Memoización Estricta (useMemo):** Se envolvió la transformación de datos costosa (`combinedData`) en un `useMemo` para evitar re-renders por cálculos O(N) pesados en el frontend.
+3. **Tipado Estricto (TypeScript y Pydantic):** Se erradicó el uso de `any` creando e implementando interfaces DTO puras, y se migró el tipo de las fechas de `str` a `datetime.date` en Pydantic.
+4. **Optimización del Algoritmo de Ocupación (Backend):** Se refactorizó la lógica en Python implementando `_obtener_patron_semanal_turnos()` que permite acceso O(1) con diccionarios precalculados, erradicando loops anidados CPU-bound intensivos.
+5. **Corrección de Bugs Críticos:** Se corrigió un error de estado (`loading` vs `isLoading`) que producía ReferenceErrors asíncronos y bloqueaba el primer renderizado de la UI en situaciones críticas.
+
+---
+
+## Slice 6: Sistema de Notificaciones (Alertas)
 **Estado:** 🔄 En Proceso (Auditoría Inicial)
 
 **Hallazgos de Auditoría:**
-* **Tipado Débil (Frontend y Pydantic):** Ausencia de tipado en React para mapeos gráficos (`item: any`), y fechas enviadas como `str` en lugar de `date` en Pydantic limitando la validación ISO de FastAPI.
-* **CPU-Bound Loop Ineficiente:** El cálculo de tasa de ocupación itera sobre cada día y cada cancha recalculando reglas estáticas de apertura/cierre (complejidad O(Días * Canchas)), bloqueando el event loop de Python con peticiones largas.
-* **God Component de Gráficos:** El archivo `estadisticas/page.tsx` (casi 500 líneas) incluye todos los dropdowns y 5 gráficos masivos de Recharts sin modularizar, forzando un redibujado costoso.
-* **Bomba de Tiempo (ReferenceError):** Fallo de renderizado asíncrono con la variable `loading` (indefinida) en lugar del hook `isLoading` (Línea 125).
+* **Contratos Débiles (Tipado Abierto):** En Pydantic (`notificacion_schemas.py`), el tipo de alerta viaja como un `str` genérico. El frontend mapea los íconos de la campanita haciendo un `switch` con strings quemados, lo que expone al sistema a fallos silenciosos por errores de tipeo o desajustes entre front y back.
+* **Cuello de Botella Síncrono:** La generación de notificaciones (`crear_notificaciones_bulk`) bloquea el hilo principal de los requests. Ej: si se cancela un torneo, el servidor detiene la respuesta HTTP al organizador hasta terminar de escribir todas las alertas de los jugadores en la DB.
+* **Polling Manual Anti-Patrón:** El frontend utiliza un `setInterval` manual acoplado a un `useState` local en `useNotifications`. Esto puede causar desincronización entre múltiples pestañas, duplicidad de peticiones e incapacidad de limpiar la caché eficientemente.
 
 **Plan de Acción (Definition of Done):**
-1. 🔄 **Desacoplar el Dashboard (Dumb Components):** Extraer los gráficos de Recharts hacia subcomponentes independientes (`KpiCards`, `EvolucionChart`, etc.) para aislar los re-renders.
-2. 🔄 **Memoización Estricta (useMemo):** Envolver transformaciones de datos costosas (como `combinedData` y mapeos de fecha) en `useMemo`.
-3. 🔄 **Tipado Estricto (TypeScript y Pydantic):** Eliminar los `any` del frontend definiendo interfaces completas, y cambiar los esquemas de Pydantic a `datetime.date`.
-4. 🔄 **Optimización del Algoritmo de Ocupación:** Pre-calcular o memorizar el patrón de turnos (`_calcular_turnos_por_dia`) en el Backend para evitar loops O(N) pesados y liberar CPU.
-5. 🔄 **Corrección de Bugs Críticos:** Arreglar el error de sintaxis del `loading` que genera pantallas blancas.
+1. 🔄 **Tipado Literal Defensivo (Contratos):** Restringir el tipo `str` en Pydantic y TypeScript a tipos Literales estrictos (Enum) garantizando integridad de eventos.
+2. 🔄 **Delegación Asíncrona (BackgroundTasks):** Envolver los servicios de inyección de alertas en `BackgroundTasks` de FastAPI, liberando la respuesta HTTP de manera inmediata.
+3. 🔄 **Estandarización a React Query (Polling):** Erradicar el `setInterval` manual migrando la campanita de notificaciones a un `useQuery` nativo con `refetchInterval` para sincronización multi-pestaña.
+4. 🔄 **Actualizaciones Optimistas (useMutation):** Migrar acciones de "marcar como leído" o "eliminar" a mutations de TanStack Query para que la UI reaccione instantáneamente sin esperar al servidor.
+5. 🔄 **Auditoría de Índices SQL:** Comprobar que la BD consulte mediante un índice compuesto `(usuario_id, leida)` optimizado para lectura intensa O(log N).

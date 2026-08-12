@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.db import Base 
 from app.models.usuario_model import Usuario
 from app.models.cancha_model import Cancha
-from app.models.partido_model import Partido
+from app.models.partido_model import Partido, partido_jugadores
 from app.models.torneo_model import Torneo
 from app.models.partido_torneo import PartidoTorneo
 from app.models.equipo_model import Equipo
@@ -24,20 +24,26 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def generar_datos():
     db = SessionLocal()
     try:
-        laura = db.query(Usuario).filter(Usuario.email == "lauraherrera@gmail.com").first()
-        if not laura:
-            print("No se encontró a Laura Herrera")
+        miguel = db.query(Usuario).filter(Usuario.email == "miguelgalvan@gmail.com").first()
+        if not miguel:
+            print("No se encontró a Miguel Galvan")
             return
             
-        canchas = db.query(Cancha).filter(Cancha.propietario_id == laura.id).all()
+        canchas = db.query(Cancha).filter(Cancha.propietario_id == miguel.id).all()
         if not canchas:
-            print("Laura no tiene canchas")
+            print("Miguel no tiene canchas")
             return
             
         cancha_ids = [c.id for c in canchas]
         
-        # Limpiar partidos anteriores para estas canchas (para evitar duplicados al correr varias veces)
-        db.query(Partido).filter(Partido.cancha_id.in_(cancha_ids)).delete(synchronize_session=False)
+        # Limpiar partidos anteriores para estas canchas
+        partidos_a_borrar = db.query(Partido.id).filter(Partido.cancha_id.in_(cancha_ids)).all()
+        partidos_ids = [p[0] for p in partidos_a_borrar]
+        if partidos_ids:
+            # Primero borrar las inscripciones de jugadores
+            db.query(partido_jugadores).filter(partido_jugadores.c.partido_id.in_(partidos_ids)).delete(synchronize_session=False)
+            # Luego borrar los partidos
+            db.query(Partido).filter(Partido.id.in_(partidos_ids)).delete(synchronize_session=False)
         db.commit()
         
         # Get some players to use as organizers
@@ -76,7 +82,7 @@ def generar_datos():
                         
                     if random.random() < prob:
                         # Crear partido
-                        organizador = random.choice(jugadores) if jugadores else laura
+                        organizador = random.choice(jugadores) if jugadores else miguel
                         
                         # Tipos: todos cerrados (algunos manuales, otros por app)
                         tipo = random.choices(["cerrado", "manual"], weights=[0.7, 0.3])[0]

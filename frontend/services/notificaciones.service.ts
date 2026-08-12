@@ -1,8 +1,32 @@
 import { fetchApi, getErrorMessage } from "@/lib/api-client";
 
+/**
+ * ==========================================
+ * 📘 GUÍA PARA AGREGAR NUEVAS NOTIFICACIONES
+ * ==========================================
+ * Si necesitas crear un nuevo tipo de notificación (ej: "torneo_empezado"):
+ * 1. Agrega el string exacto aquí abajo dentro de TipoNotificacion.
+ * 2. Agrega el MISMO string en backend/app/schemas/notificacion_schemas.py (TipoNotificacion).
+ * 3. (Opcional) Asignale un ícono en frontend/components/notifications-panel.tsx (getNotificationIcon).
+ * 4. Usa tu nuevo string al llamar a notificacion_service.crear_notificaciones_bulk() en Python.
+ * ==========================================
+ */
+export type TipoNotificacion = 
+  | "partido_cancelado"
+  | "partido_editado"
+  | "jugador_inscripto"
+  | "jugador_baja"
+  | "reserva_cancha"
+  | "cancelacion_cancha"
+  | "cambio_cancha_perdida"
+  | "cambio_cancha_ganada"
+  | "reserva_cancelada_por_dueno"
+  | "reserva_reprogramada"
+  | "torneo_cancelado";
+
 export interface NotificacionData {
   id: number;
-  tipo: string;
+  tipo: TipoNotificacion;
   mensaje: string;
   partido_id?: number | null;
   leida: boolean;
