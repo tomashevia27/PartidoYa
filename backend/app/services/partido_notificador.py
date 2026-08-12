@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from fastapi import BackgroundTasks
 from . import notificacion_service
 
 
@@ -39,7 +39,7 @@ def _obtener_ids_involucrados(partido, excluir_id=None, incluir_jugadores=True):
 # desde los eventos de partidos
 # ─────────────────────────────────────────────
 
-def notificar_partido_cancelado(db: Session, partido):
+def notificar_partido_cancelado(partido, background_tasks: BackgroundTasks):
     """Notifica a todos los inscriptos que el partido fue cancelado (solo abiertos)."""
     if partido.tipo != "abierto":
         return
@@ -48,10 +48,10 @@ def notificar_partido_cancelado(db: Session, partido):
     mensaje = f"{org_nom} canceló el partido de {partido.modalidad} en {can_nom} del {f_str} a las {h_str}hs."
     
     usuarios_ids = _obtener_ids_involucrados(partido, excluir_id=partido.organizador_id)
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "partido_cancelado", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "partido_cancelado", mensaje, partido.id)
 
 
-def notificar_partido_editado(db: Session, partido, cambios: dict):
+def notificar_partido_editado(partido, cambios: dict, background_tasks: BackgroundTasks):
     """Notifica a los inscriptos que se editaron datos del partido (solo abiertos)."""
     if partido.tipo != "abierto":
         return
@@ -70,10 +70,10 @@ def notificar_partido_editado(db: Session, partido, cambios: dict):
     mensaje = f"{org_nom} editó el partido de {partido.modalidad}: se modificó {', '.join(campos)}."
     
     usuarios_ids = _obtener_ids_involucrados(partido, excluir_id=partido.organizador_id)
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "partido_editado", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "partido_editado", mensaje, partido.id)
 
 
-def notificar_inscripcion(db: Session, partido, jugador_nuevo):
+def notificar_inscripcion(partido, jugador_nuevo, background_tasks: BackgroundTasks):
     """Notifica a los demás jugadores y al organizador que alguien se inscribió."""
     _, can_nom, f_str, h_str = _obtener_datos_base_partido(partido)
     nom_jugador = _obtener_nombre_completo(jugador_nuevo)
@@ -81,10 +81,10 @@ def notificar_inscripcion(db: Session, partido, jugador_nuevo):
     mensaje = f"{nom_jugador} se inscribió al partido de {partido.modalidad} en {can_nom} del {f_str} a las {h_str}hs."
     
     usuarios_ids = _obtener_ids_involucrados(partido, excluir_id=jugador_nuevo.id)
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "jugador_inscripto", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "jugador_inscripto", mensaje, partido.id)
 
 
-def notificar_baja(db: Session, partido, jugador_baja):
+def notificar_baja(partido, jugador_baja, background_tasks: BackgroundTasks):
     """Notifica a los demás jugadores y al organizador que alguien se bajó."""
     _, can_nom, f_str, h_str = _obtener_datos_base_partido(partido)
     nom_jugador = _obtener_nombre_completo(jugador_baja)
@@ -92,56 +92,56 @@ def notificar_baja(db: Session, partido, jugador_baja):
     mensaje = f"{nom_jugador} se bajó del partido de {partido.modalidad} en {can_nom} del {f_str} a las {h_str}hs."
     
     usuarios_ids = _obtener_ids_involucrados(partido, excluir_id=jugador_baja.id)
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "jugador_baja", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "jugador_baja", mensaje, partido.id)
 
 
-def notificar_propietario_reserva(db: Session, cancha, partido):
+def notificar_propietario_reserva(cancha, partido, background_tasks: BackgroundTasks):
     """Notifica al propietario de la cancha que se creó un partido."""
     org_nom, _, f_str, h_str = _obtener_datos_base_partido(partido)
     mensaje = f"{org_nom} reservó tu cancha {cancha.nombre} para el {f_str} a las {h_str}hs ({partido.modalidad})."
     
-    notificacion_service.crear_notificaciones_bulk(db, {cancha.propietario_id}, "reserva_cancha", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, {cancha.propietario_id}, "reserva_cancha", mensaje, partido.id)
 
 
-def notificar_propietario_cancelacion(db: Session, cancha, partido):
+def notificar_propietario_cancelacion(cancha, partido, background_tasks: BackgroundTasks):
     """Notifica al propietario de la cancha que se canceló un partido."""
     org_nom, _, f_str, h_str = _obtener_datos_base_partido(partido)
     mensaje = f"{org_nom} canceló la reserva de tu cancha {cancha.nombre} del {f_str} a las {h_str}hs."
     
-    notificacion_service.crear_notificaciones_bulk(db, {cancha.propietario_id}, "cancelacion_cancha", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, {cancha.propietario_id}, "cancelacion_cancha", mensaje, partido.id)
 
 
-def notificar_cambio_cancha(db: Session, cancha_anterior, cancha_nueva, partido):
+def notificar_cambio_cancha(cancha_anterior, cancha_nueva, partido, background_tasks: BackgroundTasks):
     """Notifica a los propietarios cuando se cambia de cancha al editar un partido."""
     org_nom, _, f_str, h_str = _obtener_datos_base_partido(partido)
 
     if cancha_anterior.propietario_id == cancha_nueva.propietario_id:
         mensaje = f"{org_nom} cambió la reserva del {f_str} a las {h_str}hs de tu cancha {cancha_anterior.nombre} a tu cancha {cancha_nueva.nombre}."
-        notificacion_service.crear_notificaciones_bulk(db, {cancha_anterior.propietario_id}, "cambio_cancha_ganada", mensaje, partido.id)
+        background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, {cancha_anterior.propietario_id}, "cambio_cancha_ganada", mensaje, partido.id)
         return
 
     # Propietario anterior pierde turno
     mensaje_perdida = f"{org_nom} movió su partido del {f_str} a las {h_str}hs de tu cancha {cancha_anterior.nombre} a otra cancha."
-    notificacion_service.crear_notificaciones_bulk(db, {cancha_anterior.propietario_id}, "cambio_cancha_perdida", mensaje_perdida, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, {cancha_anterior.propietario_id}, "cambio_cancha_perdida", mensaje_perdida, partido.id)
 
     # Nuevo propietario gana turno
     mensaje_ganada = f"{org_nom} reservó tu cancha {cancha_nueva.nombre} para el {f_str} a las {h_str}hs ({partido.modalidad})."
-    notificacion_service.crear_notificaciones_bulk(db, {cancha_nueva.propietario_id}, "cambio_cancha_ganada", mensaje_ganada, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, {cancha_nueva.propietario_id}, "cambio_cancha_ganada", mensaje_ganada, partido.id)
 
 
-def notificar_reserva_cancelada_por_dueno(db: Session, cancha, partido):
+def notificar_reserva_cancelada_por_dueno(cancha, partido, background_tasks: BackgroundTasks):
     _, _, f_str, h_str = _obtener_datos_base_partido(partido)
     mensaje = f"El complejo canceló tu reserva en {cancha.nombre} del {f_str} a las {h_str}hs. El turno fue liberado."
     
     usuarios_ids = _obtener_ids_involucrados(partido, incluir_jugadores=(partido.tipo == "abierto"))
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "reserva_cancelada_por_dueno", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "reserva_cancelada_por_dueno", mensaje, partido.id)
 
 
-def notificar_reserva_reprogramada(db: Session, cancha, partido, fecha_ant, horario_ant, cancha_id_ant):
+def notificar_reserva_reprogramada(cancha, partido, fecha_ant, horario_ant, cancha_id_ant, background_tasks: BackgroundTasks):
     f_ant_str, h_ant_str = fecha_ant.strftime("%d/%m/%Y"), horario_ant.strftime("%H:%M")
     _, _, f_nueva_str, h_nueva_str = _obtener_datos_base_partido(partido)
     
     mensaje = f"El complejo reprogramó tu reserva en {cancha.nombre}: del {f_ant_str} a las {h_ant_str}hs al {f_nueva_str} a las {h_nueva_str}hs."
     
     usuarios_ids = _obtener_ids_involucrados(partido, incluir_jugadores=(partido.tipo == "abierto"))
-    notificacion_service.crear_notificaciones_bulk(db, usuarios_ids, "reserva_reprogramada", mensaje, partido.id)
+    background_tasks.add_task(notificacion_service.lanzar_notificaciones_bg, usuarios_ids, "reserva_reprogramada", mensaje, partido.id)

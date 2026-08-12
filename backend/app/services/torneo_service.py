@@ -1,5 +1,6 @@
 from ..core.exceptions import DomainRuleError, DomainPermissionError, DomainNotFoundError
 from sqlalchemy.orm import Session
+from fastapi import BackgroundTasks, HTTPException, status
 from datetime import datetime, timedelta, timezone
 
 from ..models.usuario_model import Usuario
@@ -230,13 +231,13 @@ def listar_mis_torneos(db: Session, usuario_id: int) -> Dict[str, List[Dict]]:
     return resultado
 
 
-def cancelar_torneo(db: Session, torneo_id: int, usuario_accion_id: int):
+def cancelar_torneo(db: Session, torneo_id: int, organizador_id: int, background_tasks: BackgroundTasks):
     torneo = torneo_repository.obtener_por_id(db, torneo_id)
     
     if not torneo:
         raise DomainNotFoundError("Torneo no encontrado")
         
-    if torneo.organizador_id != usuario_accion_id:
+    if torneo.organizador_id != organizador_id:
         raise DomainPermissionError("No tienes permisos para cancelar este torneo")
         
     if torneo.estado == EstadoTorneo.cancelado:
@@ -246,7 +247,7 @@ def cancelar_torneo(db: Session, torneo_id: int, usuario_accion_id: int):
     if torneo.estado == EstadoTorneo.finalizado:
         raise DomainRuleError("No se puede cancelar un torneo finalizado")
 
-    notificar_torneo_cancelado(db, torneo)
+    notificar_torneo_cancelado(torneo, background_tasks)
 
     torneo.estado = EstadoTorneo.cancelado
     db.commit()

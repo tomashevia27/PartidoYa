@@ -64,3 +64,17 @@ def crear_notificaciones_bulk(db: Session, usuarios_ids: set, tipo: str, mensaje
         for uid in usuarios_ids
     ]
     notificacion_repository.crear_notificaciones_bulk(db, notificaciones)
+
+
+def lanzar_notificaciones_bg(usuarios_ids: set, tipo: str, mensaje: str, partido_id: int):
+    """Ejecuta crear_notificaciones_bulk en un hilo en segundo plano con su propia DB Session."""
+    from ..core.db import SessionLocal
+    if not usuarios_ids:
+        return
+    with SessionLocal() as db_bg:
+        try:
+            crear_notificaciones_bulk(db_bg, usuarios_ids, tipo, mensaje, partido_id)
+            db_bg.commit()
+        except Exception as e:
+            db_bg.rollback()
+            print(f"Error al enviar notificaciones en background: {e}")

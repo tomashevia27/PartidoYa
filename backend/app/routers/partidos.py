@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -43,31 +43,34 @@ def obtener_filtros_disponibles(
 @router.post("/{partido_id}/inscribirse", response_model=PartidoRespuesta)
 def inscribirse_a_partido(
     partido_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Inscribe al jugador actual en un partido abierto con cupo."""
-    return partido_service.inscribirse_a_partido(db, partido_id, current_user.id)
+    """Inscribe al usuario logueado en el partido seleccionado."""
+    return partido_service.inscribirse_a_partido(db, partido_id, current_user.id, background_tasks)
 
 
 @router.delete("/{partido_id}/bajarse", response_model=PartidoRespuesta)
 def bajarse_de_partido(
     partido_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Cancela la participación del jugador actual en un partido abierto."""
-    return partido_service.bajarse_de_partido(db, partido_id, current_user.id)
+    """Baja al usuario logueado de un partido al que estaba inscrito."""
+    return partido_service.bajarse_de_partido(db, partido_id, current_user.id, background_tasks)
 
 @router.post("", response_model=PartidoRespuesta)
 def crear_partido(
     datos: PartidoCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
 
-    """Crea un nuevo partido."""
-    return partido_service.crear_partido(db, current_user.id, datos)
+    """Crea un partido nuevo (abierto o cerrado). El usuario logueado será el organizador."""
+    return partido_service.crear_partido(db, current_user.id, datos, background_tasks)
 
 @router.get("/{partido_id}", response_model=PartidoRespuesta)
 def obtener_detalle_partido(partido_id: int, db: Session = Depends(get_db)):
@@ -77,18 +80,20 @@ def obtener_detalle_partido(partido_id: int, db: Session = Depends(get_db)):
 @router.patch("/{partido_id}/cancelar", response_model=PartidoRespuesta)
 def cancelar_partido(
     partido_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Cancela un partido previamente creado."""
-    return partido_service.cancelar_partido(db, partido_id, current_user.id)
+    """El organizador cancela un partido."""
+    return partido_service.cancelar_partido(db, partido_id, current_user.id, background_tasks)
 
 @router.put("/{partido_id}", response_model=PartidoRespuesta)
 def editar_partido(
     partido_id: int,
     datos: PartidoUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    """Edita los datos de un partido."""
-    return partido_service.editar_partido(db, partido_id, current_user.id, datos)
+    """El organizador edita los datos de su partido."""
+    return partido_service.editar_partido(db, partido_id, current_user.id, datos, background_tasks)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, BackgroundTasks
 from typing import List
 from sqlalchemy.orm import Session
 
@@ -112,10 +112,11 @@ def bajar_equipo_de_torneo(
 @router.post("/{torneo_id}/cancelar", response_model=TorneoResponse)
 def cancelar_torneo(
     torneo_id: int,
+    background_tasks: BackgroundTasks,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return torneo_service.cancelar_torneo(db, torneo_id, current_user.id)
+    return torneo_service.cancelar_torneo(db, torneo_id, current_user.id, background_tasks)
 
 @router.post(
     "/{torneo_id}/fixture",

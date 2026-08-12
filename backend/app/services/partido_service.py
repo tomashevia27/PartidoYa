@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from datetime import datetime, date, timedelta, timezone
 
@@ -96,7 +96,7 @@ def obtener_detalle_partido(db: Session, partido_id: int):
 # Acciones de Jugadores
 # ─────────────────────────────────────────────
 
-def inscribirse_a_partido(db: Session, partido_id: int, usuario_id: int):
+def inscribirse_a_partido(db: Session, partido_id: int, usuario_id: int, background_tasks: BackgroundTasks):
     partido = partido_repository.obtener_por_id_bloqueado(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
@@ -112,11 +112,11 @@ def inscribirse_a_partido(db: Session, partido_id: int, usuario_id: int):
     partido.inscribir_jugador(usuario)
 
     resultado = partido_repository.guardar_inscripcion(db, partido, usuario)
-    partido_notificador.notificar_inscripcion(db, partido, usuario)
+    partido_notificador.notificar_inscripcion(partido, usuario, background_tasks)
     db.commit()
     return resultado
 
-def bajarse_de_partido(db: Session, partido_id: int, usuario_id: int):
+def bajarse_de_partido(db: Session, partido_id: int, usuario_id: int, background_tasks: BackgroundTasks):
     partido = partido_repository.obtener_por_id_bloqueado(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
@@ -128,7 +128,7 @@ def bajarse_de_partido(db: Session, partido_id: int, usuario_id: int):
     cancelacion_anticipada = partido.bajar_jugador(usuario, _obtener_ahora_local())
 
     resultado = partido_repository.guardar_baja_inscripcion(db, partido, usuario)
-    partido_notificador.notificar_baja(db, partido, usuario)
+    partido_notificador.notificar_baja(partido, usuario, background_tasks)
     db.commit()
     return resultado
 
@@ -137,7 +137,7 @@ def bajarse_de_partido(db: Session, partido_id: int, usuario_id: int):
 # Acciones del Organizador (Jugador)
 # ─────────────────────────────────────────────
 
-def crear_partido(db: Session, organizador_id: int, datos: PartidoCreate):
+def crear_partido(db: Session, organizador_id: int, datos: PartidoCreate, background_tasks: BackgroundTasks):
     if datos.tipo not in ["abierto", "cerrado"]:
         raise HTTPException(status_code=400, detail="El tipo de partido debe ser 'abierto' o 'cerrado'")
 
@@ -157,11 +157,11 @@ def crear_partido(db: Session, organizador_id: int, datos: PartidoCreate):
         )
 
     resultado = partido_repository.guardar_partido(db, nuevo_partido)
-    partido_notificador.notificar_propietario_reserva(db, cancha, resultado)
+    partido_notificador.notificar_propietario_reserva(cancha, resultado, background_tasks)
     db.commit()
     return resultado
 
-def editar_partido(db: Session, partido_id: int, usuario_id: int, datos: PartidoUpdate):
+def editar_partido(db: Session, partido_id: int, usuario_id: int, datos: PartidoUpdate, background_tasks: BackgroundTasks):
     partido = partido_repository.obtener_por_id(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
@@ -211,18 +211,18 @@ def editar_partido(db: Session, partido_id: int, usuario_id: int, datos: Partido
         cambios["cupos_disponibles"] = {"anterior": str(cupos_anterior), "nuevo": str(nuevo_cupos)}
 
     if cambios:
-        partido_notificador.notificar_partido_editado(db, partido, cambios)
+        partido_notificador.notificar_partido_editado(partido, cambios, background_tasks)
 
     if cancha_id_anterior != nueva_cancha_id:
         cancha_anterior_obj = cancha_repository.obtener_por_id(db, cancha_id_anterior)
         if cancha_anterior_obj:
-            partido_notificador.notificar_cambio_cancha(db, cancha_anterior_obj, cancha, partido)
+            partido_notificador.notificar_cambio_cancha(cancha_anterior_obj, cancha, partido, background_tasks)
 
     db.commit()
     db.refresh(partido)
     return partido
 
-def cancelar_partido(db: Session, partido_id: int, usuario_id: int):
+def cancelar_partido(db: Session, partido_id: int, usuario_id: int, background_tasks: BackgroundTasks):
     partido = partido_repository.obtener_por_id(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
@@ -230,11 +230,11 @@ def cancelar_partido(db: Session, partido_id: int, usuario_id: int):
     partido.cancelar_por_organizador(usuario_id)
     _validar_fecha_futura(partido.fecha, partido.horario, "No se puede cancelar un partido que ya pasó")
 
-    partido_notificador.notificar_partido_cancelado(db, partido)
+    partido_notificador.notificar_partido_cancelado(partido, background_tasks)
 
     cancha = cancha_repository.obtener_por_id(db, partido.cancha_id)
     if cancha:
-        partido_notificador.notificar_propietario_cancelacion(db, cancha, partido)
+        partido_notificador.notificar_propietario_cancelacion(cancha, partido, background_tasks)
 
     db.commit()
     db.refresh(partido)
@@ -298,7 +298,7 @@ def eliminar_bloqueo_turno(db: Session, current_user: Usuario, partido_id: int):
     db.commit()
     return {"mensaje": "Bloqueo eliminado exitosamente"}
 
-def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int):
+def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int, background_tasks: BackgroundTasks):
     if current_user.rol != RolUsuario.admin:
         raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden cancelar reservas")
 
@@ -312,13 +312,13 @@ def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int):
     partido.cancelar_por_admin()
 
     if not partido.reserva_manual and partido.organizador_id:
-        partido_notificador.notificar_reserva_cancelada_por_dueno(db, cancha, partido)
+        partido_notificador.notificar_reserva_cancelada_por_dueno(cancha, partido, background_tasks)
 
     db.commit()
     db.refresh(partido)
     return partido
 
-def reprogramar_reserva(db: Session, current_user: Usuario, partido_id: int, datos: ReprogramarReserva):
+def reprogramar_reserva(db: Session, current_user: Usuario, partido_id: int, datos: ReprogramarReserva, background_tasks: BackgroundTasks):
     if current_user.rol != RolUsuario.admin:
         raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden reprogramar reservas")
 
@@ -350,7 +350,7 @@ def reprogramar_reserva(db: Session, current_user: Usuario, partido_id: int, dat
 
     if not partido.reserva_manual and partido.organizador_id:
         partido_notificador.notificar_reserva_reprogramada(
-            db, cancha, partido, fecha_anterior, horario_anterior, cancha_id_anterior
+            cancha, partido, fecha_anterior, horario_anterior, cancha_id_anterior, background_tasks
         )
 
     db.commit()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from ..core.dependencies import get_db
@@ -42,18 +42,20 @@ def eliminar_bloqueo_turno(
 @router.delete("/{partido_id}", response_model=PartidoRespuesta)
 def cancelar_reserva(
     partido_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     """Cancela una reserva o partido por parte del dueño."""
-    return partido_service.cancelar_reserva_dueno(db, current_user, partido_id)
+    return partido_service.cancelar_reserva_dueno(db, current_user, partido_id, background_tasks)
 
 @router.put("/{partido_id}/reprogramar", response_model=PartidoRespuesta)
 def reprogramar_reserva(
     partido_id: int,
     datos: ReprogramarReserva,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
     """Reprograma una reserva a una nueva fecha/hora y opcionalmente a otra cancha."""
-    return partido_service.reprogramar_reserva(db, current_user, partido_id, datos)
+    return partido_service.reprogramar_reserva(db, current_user, partido_id, datos, background_tasks)
