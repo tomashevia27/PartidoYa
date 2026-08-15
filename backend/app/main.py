@@ -60,7 +60,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     body = await request.body()
     print("VALIDATION ERROR:", exc.errors())
     print("REQUEST BODY:", body)
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    # Filter out or stringify context objects that contain ValueError
+    errors = []
+    for err in exc.errors():
+        err_copy = dict(err)
+        if 'ctx' in err_copy and 'error' in err_copy['ctx']:
+            err_copy['ctx']['error'] = str(err_copy['ctx']['error'])
+        errors.append(err_copy)
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 app.include_router(auth.router)
 app.include_router(users.router)

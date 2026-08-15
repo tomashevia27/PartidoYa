@@ -100,6 +100,11 @@ def inscribir_equipo(db: Session, torneo_id: int, datos: InscripcionEquipoCreate
 
     if torneo.estado != EstadoTorneo.abierto:
         raise DomainRuleError("No se aceptan inscripciones. El torneo no está abierto.")
+        
+    tz_local = timezone(timedelta(hours=-3))
+    ahora = datetime.now(tz_local).replace(tzinfo=None)
+    if torneo.fecha_inicio.replace(tzinfo=None) < ahora:
+        raise DomainRuleError("No podés inscribir a tu equipo a un torneo cuya fecha de inicio ya pasó.")
 
     if len(torneo.equipos_inscriptos) >= torneo.max_equipos:
         raise DomainRuleError("El torneo ya no tiene cupos de inscripción disponibles.")
@@ -181,10 +186,12 @@ def bajar_equipo(db: Session, torneo_id: int, usuario_accion_id: int):
     return torneo
 
 def listar_torneos_abiertos(db: Session) -> List[Torneo]:
-    """Devuelve una lista de torneos con estado 'abierto' incluyendo cupos_restantes.  
+    """Devuelve una lista de torneos con estado 'abierto' incluyendo cupos_restantes y fecha futura.
     """
     torneos = torneo_repository.obtener_todos(db, EstadoTorneo.abierto)
-    return [t for t in torneos if t.inscriptos < t.max_equipos]
+    tz_local = timezone(timedelta(hours=-3))
+    ahora = datetime.now(tz_local).replace(tzinfo=None)
+    return [t for t in torneos if t.inscriptos < t.max_equipos and t.fecha_inicio.replace(tzinfo=None) >= ahora]
 
 
 def listar_mis_torneos(db: Session, usuario_id: int) -> Dict[str, List[Dict]]:
