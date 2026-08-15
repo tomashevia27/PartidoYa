@@ -27,15 +27,16 @@ TAMANOS_MODALIDAD = {
 # ─────────────────────────────────────────────
 
 def _obtener_ahora_local():
-    """Obtiene la fecha y hora actual en la zona horaria local, sin información de zona."""
-    return datetime.now(TZ_LOCAL).replace(tzinfo=None)
+    """Obtiene la fecha y hora actual en la zona horaria local, CON información de zona."""
+    return datetime.now(TZ_LOCAL)
 
 def _validar_fecha_futura(fecha_partido: date, hora_partido, mensaje_error: str):
     """Valida que la fecha y hora indicadas sean estrictamente futuras."""
     now = _obtener_ahora_local()
-    hora_limpia = hora_partido.replace(tzinfo=None) if hasattr(hora_partido, 'replace') else hora_partido
+    # Si hora_partido es naive, le asignamos la zona horaria local
+    hora_aware = hora_partido.replace(tzinfo=TZ_LOCAL) if getattr(hora_partido, 'tzinfo', None) is None else hora_partido
     
-    if fecha_partido < now.date() or (fecha_partido == now.date() and hora_limpia <= now.time()):
+    if fecha_partido < now.date() or (fecha_partido == now.date() and hora_aware <= now.time()):
         raise HTTPException(status_code=400, detail=mensaje_error)
 
 def _validar_y_obtener_datos_cancha(db: Session, cancha_id: int, fecha: date, horario, excluir_partido_id: int = None, for_update: bool = False):

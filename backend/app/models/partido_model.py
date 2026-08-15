@@ -99,8 +99,9 @@ class Partido(Base):
         if not any(jugador.id == usuario.id for jugador in self.jugadores):
             raise DomainRuleError("No estás inscripto en este partido")
 
-        hora_partido_limpia = self.horario.replace(tzinfo=None) if hasattr(self.horario, 'replace') else self.horario
-        partido_inicio = datetime.combine(self.fecha, hora_partido_limpia)
+        # Asignamos tzinfo a la hora_partido para que el combine() sea timezone-aware
+        hora_partido_aware = self.horario.replace(tzinfo=hora_actual.tzinfo) if getattr(self.horario, 'tzinfo', None) is None else self.horario
+        partido_inicio = datetime.combine(self.fecha, hora_partido_aware)
         # Se permite bajarse en cualquier momento antes del inicio del partido.
         if hora_actual >= partido_inicio:
             raise DomainRuleError("El partido ya comenzó o está en curso")
