@@ -121,6 +121,8 @@ def bajarse_de_partido(db: Session, partido_id: int, usuario_id: int, background
     partido = partido_repository.obtener_por_id_bloqueado(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
+        
+    _validar_fecha_futura(partido.fecha, partido.horario, "No te podés inscribir a un partido que ya pasó o está en curso")
 
     usuario = usuario_repository.obtener_por_id(db, usuario_id)
     if not usuario:
@@ -306,6 +308,8 @@ def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int, 
     partido = partido_repository.obtener_por_id(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+    _validar_fecha_futura(partido.fecha, partido.horario, "No podés cancelar una reserva que ya ocurrió o está en curso")
 
     cancha = cancha_repository.obtener_por_id(db, partido.cancha_id)
     
