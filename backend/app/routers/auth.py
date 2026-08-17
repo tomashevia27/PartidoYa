@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..core.dependencies import get_db
@@ -9,9 +9,9 @@ router = APIRouter(tags=["Autenticación"])
 
 # US 1: Registro de Usuario
 @router.post("/registro")
-def registrar_usuario(usuario: UsuarioRegistro, db: Session = Depends(get_db)):
+def registrar_usuario(usuario: UsuarioRegistro, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Registra un nuevo usuario y envía código de confirmación por email."""
-    return auth_service.registrar(db, usuario)
+    return auth_service.registrar(db, usuario, background_tasks)
 
 
 # US 1b: Confirmar email

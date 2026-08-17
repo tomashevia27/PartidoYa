@@ -1,4 +1,6 @@
+from unittest.mock import patch
 from app.models.usuario_model import Usuario
+from app.services import auth_service
 
 # ==========================================
 # US 1: Registro de Usuario
@@ -153,4 +155,63 @@ def test_us3_edicion_general_exitosa(client, db_session, usuario_comun_activo):
     
     response = client.put("/usuarios/me", json=datos_edicion, headers=headers)
     assert response.status_code == 200
+
+# ==========================================
+# Tarea 1.2: Email asíncrono - robustez
+# ==========================================
+
+def test_registro_crea_usuario_si_email_falla(client, db_session, usuario_comun_payload):
+    """El usuario se crea aunque el servicio de email falle (email async)."""
+    from fastapi.testclient import TestClient
+    from app.main import app as _app
+
+    tolerant_client = TestClient(_app, raise_server_exceptions=False)
+    with patch("app.services.auth_service.email_service.send_confirmation_email", side_effect=RuntimeError("SMTP down")):
+        response = tolerant_client.post("/registro", json=usuario_comun_payload)
+
+    assert response.status_code == 200
+
+    usuario = db_session.query(Usuario).filter_by(email=usuario_comun_payload["email"]).first()
+    assert usuario is not None
+    assert usuario.email_confirmado is False
+
+# ==========================================
+# Tarea 1.3: Rate limiting en reenvío
+# ==========================================
+
+def test_reenvio_codigo_falla_rate_limit(client, db_session, usuario_comun_payload):
+    """Segundo reenvío inmediato debe retornar 429 (rate limiting)."""
+    auth_service._last_resend.clear()
+
+    client.post("/registro", json=usuario_comun_payload)
+
+    email = usuario_comun_payload["email"]
+    first = client.post("/reenviar-codigo", json={"email": email})
+    assert first.status_code == 200
+
+    second = client.post("/reenviar-codigo", json={"email": email})
+    assert second.status_code == 429
+    assert "segundos" in second.json()["detail"]
+
+    auth_service._last_resend.clear()
+
+# ==========================================
+# Tarea 1.4: JWT seguro con rol
+# ==========================================
+
+def test_login_jwt_contiene_rol(client, usuario_comun_activo):
+    """El JWT debe contener el rol del usuario en su payload."""
+    import jwt as pyjwt
+    from app.core.config import settings
+
+    datos_login = {
+        "email": usuario_comun_activo["payload"]["email"],
+        "password": usuario_comun_activo["payload"]["password"]
+    }
+    response = client.post("/login", json=datos_login)
+    token = response.json()["access_token"]
+
+    payload = pyjwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    assert "rol" in payload
+    assert payload["rol"] == "jugador"
 
