@@ -21,6 +21,7 @@ from ..schemas.partido_torneo_schemas import (
 )
 from ..schemas.partido_torneo_schemas import TopJugadorResponse, TablaPosicionResponse, VallaInvictaResponse
 from ..services.fixture.eliminacion_directa_generator import EliminacionDirectaGenerator    
+from .partido_service import _validar_fecha_futura
 
 def obtener_partidos_torneo(db: Session, torneo_id: int) -> list[PartidoTorneo]:
     torneo = db.query(Torneo).filter(Torneo.id == torneo_id).first()
@@ -86,6 +87,7 @@ def programar_partido(db: Session, partido_id: int, data: ProgramarPartidoReques
         raise HTTPException(status_code=404, detail="Cancha no encontrada")
     
     _validar_reglas_torneo(cancha, partido.torneo, data.fecha, data.horario)
+    _validar_fecha_futura(data.fecha, data.horario, "La fecha y hora del partido deben ser futuras")
     
     if not partido_repository.verificar_disponibilidad_cancha(
         db, data.cancha_id, data.fecha, data.horario, 
@@ -140,6 +142,9 @@ def cargar_resultado_partido(db: Session, partido_id: int, data: CargarResultado
     
     if partido.estado != EstadoPartidoTorneo.pendiente:
         raise HTTPException(status_code=400, detail="El partido ya ha sido finalizado")
+
+    if not partido.fecha:
+        raise HTTPException(status_code=400, detail="El partido aún no fue programado")
 
     hoy = datetime.now(partido_repository.TZ_LOCAL).date()
     if partido.fecha > hoy:
