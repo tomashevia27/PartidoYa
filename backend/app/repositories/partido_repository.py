@@ -26,6 +26,23 @@ def obtener_inscritos_por_usuario(db: Session, usuario_id: int):
         joinedload(Partido.jugadores)
     ).filter(Partido.jugadores.any(id=usuario_id)).all()
 
+def obtener_mis_partidos(db: Session, usuario_id: int):
+    """Obtiene en una sola query los partidos donde el usuario es organizador o está inscrito."""
+    partidos = db.query(Partido).options(
+        joinedload(Partido.cancha),
+        joinedload(Partido.organizador),
+        joinedload(Partido.jugadores)
+    ).filter(
+        or_(
+            Partido.organizador_id == usuario_id,
+            Partido.jugadores.any(id=usuario_id)
+        )
+    ).all()
+
+    organizados = [p for p in partidos if p.organizador_id == usuario_id]
+    inscritos = [p for p in partidos if p.organizador_id != usuario_id]
+    return organizados, inscritos
+
 def obtener_por_id(db: Session, partido_id: int):
     """Obtiene un partido por su ID."""
     return db.query(Partido).filter(Partido.id == partido_id).first()

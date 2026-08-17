@@ -2,10 +2,10 @@
 
 ## FASE 1 — Seguridad y Transaccionalidad (Impacto ALTO, bajo riesgo de regresión)
 
-- [ ] **1.1** Auth: Transacción limpia en registro — Reemplazar `flush()` + `rollback()` manual por try/except con rollback centralizado. Dejar de mutar el DTO del password. | `auth_service.py`
-- [ ] **1.2** Auth: Email asíncrono en registro — Envolver `send_confirmation_email` en `BackgroundTasks`. Quitar el rollback que depende del resultado del email. | `auth_service.py`
-- [ ] **1.3** Auth: Rate limiting en reenvío de código — Agregar cooldown/timestamp en `reenviar_codigo` para mitigar Email Bombing. | `auth_service.py`
-- [ ] **1.4** Auth: Login seguro — Mover `rol` e `id` al payload del JWT en vez de retornarlos en JSON plano. Actualizar `get_current_user` para extraerlos del token. | `auth_service.py`, `core/security.py`, `core/dependencies.py`
+- [x] **1.1** Auth: Transacción limpia en registro — Reemplazar `flush()` + `rollback()` manual por try/except con rollback centralizado. Dejar de mutar el DTO del password. | `auth_service.py`
+- [x] **1.2** Auth: Email asíncrono en registro — Envolver `send_confirmation_email` en `BackgroundTasks`. Quitar el rollback que depende del resultado del email. | `auth_service.py`
+- [x] **1.3** Auth: Rate limiting en reenvío de código — Agregar cooldown/timestamp en `reenviar_codigo` para mitigar Email Bombing. | `auth_service.py`
+- [x] **1.4** Auth: Login seguro — Mover `rol` e `id` al payload del JWT en vez de retornarlos en JSON plano. Actualizar `get_current_user` para extraerlos del token. | `auth_service.py`, `core/security.py`, `core/dependencies.py`
 
 **Checkpoint**: `pytest backend/tests/test_auth.py` + `pytest backend/tests/test_partidos.py`
 
@@ -54,3 +54,18 @@
 - [ ] **5.5** AgendaBuilder: Paginación — Limitar slots generados para canchas con rango 24h. | `agenda_builder.py`, `cancha_service.py`
 
 **Checkpoint**: Suite completa `pytest`
+
+---
+
+## FASE 6 — Estandarización de Suite de Pruebas
+
+- [ ] **6.1** Definir convención de naming — Establecer el estándar `test_<funcion>_<condicion>_<resultado>` como regla global para todos los archivos de test. Documentar con ejemplos en `docs/qa/TESTING_CONVENTIONS.md`.
+- [ ] **6.2** Renombrar `test_auth.py` — Eliminar prefijos US (US1, US2, US3) y Tareas (Tarea 1.2, 1.3, 1.4). Renombrar cada test siguiendo la convención. Ej: `test_us1_registro_exitoso_sin_foto` → `test_registrar_usuario_exitoso_sin_foto`.
+- [ ] **6.3** Renombrar `test_partidos.py` — Eliminar prefijos US (US7-US13). Ej: `test_us9_crear_partido_cerrado_exitoso` → `test_crear_partido_cerrado_exitoso`.
+- [ ] **6.4** Renombrar `test_canchas.py` — Eliminar prefijos US (US4-US6). Ej: `test_us4_crear_cancha_exitoso` → `test_crear_cancha_exitoso`.
+- [ ] **6.5** Renombrar `test_reservas.py` — Eliminar prefijos US (US24-US27). Ej: `test_us24_crear_reserva_exitosa` → `test_crear_reserva_manual_exitosa`.
+- [ ] **6.6** Renombrar `test_torneos.py` — Eliminar prefijos US (US14-US21). Ej: `test_us14_crear_ed_exitoso` → `test_crear_torneo_elimacion_directa_exitoso`.
+- [ ] **6.7** Unificar tests de bugs pre-existentes — Los tests con prefijo `test_bug_*` renombrarlos a `test_<modulo>_<funcion>_<bug_descripción>`. Ej: `test_bug_inscripcion_torneo_caducado` → `test_inscribir_equipo_falla_torneo_caducado`.
+- [ ] **6.8** Validación final — Ejecutar `pytest backend/tests/ -v` y verificar que todos los tests pasan con los nuevos nombres. No se permite cambiar la lógica de ningún test, solo el nombre de la función.
+
+**Checkpoint**: Suite completa `pytest` + revisión de naming consistente
