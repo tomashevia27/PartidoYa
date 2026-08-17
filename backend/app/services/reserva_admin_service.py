@@ -6,7 +6,6 @@ from ..schemas.partido_schemas import ReservaManualCreate, ReprogramarReserva
 from ..repositories import partido_repository, cancha_repository
 from ..services import partido_notificador
 from ..services.partido_service import (
-    _obtener_ahora_local,
     _validar_fecha_futura,
     _validar_y_obtener_datos_cancha,
 )
