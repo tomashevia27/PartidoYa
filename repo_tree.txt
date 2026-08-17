@@ -1,0 +1,319 @@
+├── .dockerignore
+├── .gitignore
+├── CODE_REVIEW.md
+├── FRONTEND_BEST_PRACTICES.md
+├── MANUAL_TESTING_GUIDE.md
+├── Makefile
+├── QA_REPORT.md
+├── README.md
+├── REFACTOR_HISTORY.md
+├── TECHNICAL_DEBT.md
+├── User-Stories.csv
+├── backend
+│   ├── .env
+│   ├── Dockerfile
+│   ├── app
+│   │   ├── __init__.py
+│   │   ├── core
+│   │   │   ├── config.py
+│   │   │   ├── db.py
+│   │   │   ├── dependencies.py
+│   │   │   ├── exceptions.py
+│   │   │   └── security.py
+│   │   ├── main.py
+│   │   ├── models
+│   │   │   ├── __init__.py
+│   │   │   ├── cancha_model.py
+│   │   │   ├── equipo_model.py
+│   │   │   ├── estadistica_jugador_partido_torneo.py
+│   │   │   ├── notificacion_model.py
+│   │   │   ├── partido_model.py
+│   │   │   ├── partido_torneo.py
+│   │   │   ├── tabla_posicion.py
+│   │   │   ├── torneo_model.py
+│   │   │   └── usuario_model.py
+│   │   ├── repositories
+│   │   │   ├── __init__.py
+│   │   │   ├── cancha_repository.py
+│   │   │   ├── estadistica_repository.py
+│   │   │   ├── notificacion_repository.py
+│   │   │   ├── partido_repository.py
+│   │   │   ├── torneo_repository.py
+│   │   │   └── usuario_repository.py
+│   │   ├── routers
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py
+│   │   │   ├── canchas.py
+│   │   │   ├── estadisticas.py
+│   │   │   ├── notificaciones.py
+│   │   │   ├── partidos.py
+│   │   │   ├── reservas.py
+│   │   │   ├── torneos.py
+│   │   │   └── users.py
+│   │   ├── schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── cancha_schemas.py
+│   │   │   ├── equipo_schemas.py
+│   │   │   ├── estadistica_schemas.py
+│   │   │   ├── notificacion_schemas.py
+│   │   │   ├── partido_schemas.py
+│   │   │   ├── partido_torneo_schemas.py
+│   │   │   ├── torneo_schemas.py
+│   │   │   └── usuario_schemas.py
+│   │   └── services
+│   │       ├── __init__.py
+│   │       ├── agenda_builder.py
+│   │       ├── auth_service.py
+│   │       ├── cancha_service.py
+│   │       ├── email_service.py
+│   │       ├── estadistica_service.py
+│   │       ├── fixture
+│   │       │   ├── eliminacion_directa_generator.py
+│   │       │   ├── fase_grupos_generator.py
+│   │       │   ├── fixture_factory.py
+│   │       │   ├── fixture_generator.py
+│   │       │   ├── fixture_service.py
+│   │       │   └── todos_contra_todos_generator.py
+│   │       ├── notificacion_service.py
+│   │       ├── partido_notificador.py
+│   │       ├── partido_service.py
+│   │       ├── partido_torneo_service.py
+│   │       ├── torneo_notificador.py
+│   │       ├── torneo_service.py
+│   │       └── user_service.py
+│   ├── requirements.txt
+│   ├── seeders
+│   │   ├── anotar_equipos.py
+│   │   ├── cargar_datos.py
+│   │   ├── cargar_torneo.py
+│   │   ├── crear_torneo_test.py
+│   │   ├── seed_estadisticas_miguel.py
+│   │   └── seed_masivo.py
+│   └── tests
+│       ├── conftest.py
+│       ├── test_auth.py
+│       ├── test_canchas.py
+│       ├── test_partidos.py
+│       ├── test_reservas.py
+│       └── test_torneos.py
+├── do_cleanup.py
+├── docker-compose.yml
+├── frontend
+│   ├── Dockerfile
+│   ├── app
+│   │   ├── (app)
+│   │   │   ├── agenda
+│   │   │   │   └── page.tsx
+│   │   │   ├── canchas
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── editar
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── nueva
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── estadisticas
+│   │   │   │   └── page.tsx
+│   │   │   ├── home
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── partidos
+│   │   │   │   ├── [id]
+│   │   │   │   │   ├── editar
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── disponibles
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── nuevo
+│   │   │   │       └── page.tsx
+│   │   │   ├── profile
+│   │   │   │   ├── edit
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── torneos
+│   │   │       ├── [id]
+│   │   │       │   ├── editar
+│   │   │       │   │   └── page.tsx
+│   │   │       │   ├── inscribirse
+│   │   │       │   │   └── page.tsx
+│   │   │       │   └── page.tsx
+│   │   │       ├── nuevo
+│   │   │       │   └── page.tsx
+│   │   │       └── page.tsx
+│   │   ├── (auth)
+│   │   │   ├── confirm
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   ├── login
+│   │   │   │   └── page.tsx
+│   │   │   └── register
+│   │   │       └── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── apply-zod.js
+│   ├── components
+│   │   ├── CountdownTimer.tsx
+│   │   ├── auth-provider.tsx
+│   │   ├── canchas
+│   │   │   ├── CanchasFiltros.tsx
+│   │   │   ├── CanchasHero.tsx
+│   │   │   ├── CanchasList.tsx
+│   │   │   └── FootballIcon.tsx
+│   │   ├── estadisticas
+│   │   │   ├── ComparativaChart.tsx
+│   │   │   ├── DistribucionCharts.tsx
+│   │   │   ├── EvolucionChart.tsx
+│   │   │   ├── KpiCards.tsx
+│   │   │   ├── MapaCalorChart.tsx
+│   │   │   └── types.ts
+│   │   ├── home
+│   │   │   ├── admin-dashboard.tsx
+│   │   │   ├── hero-section.tsx
+│   │   │   └── player-dashboard.tsx
+│   │   ├── manual-reservation-dialog.tsx
+│   │   ├── navbar.tsx
+│   │   ├── notifications-panel.tsx
+│   │   ├── query-provider.tsx
+│   │   ├── reschedule-reservation-dialog.tsx
+│   │   ├── theme-provider.tsx
+│   │   ├── torneos
+│   │   │   ├── CargarResultadoModal.tsx
+│   │   │   ├── EquiposTab.tsx
+│   │   │   ├── EstadisticasTab.tsx
+│   │   │   ├── FixtureTab.tsx
+│   │   │   ├── InformacionTab.tsx
+│   │   │   ├── ProgramarPartidoModal.tsx
+│   │   │   ├── TablaTab.tsx
+│   │   │   ├── TorneoHeader.tsx
+│   │   │   └── TorneoHeroCelebration.tsx
+│   │   └── ui
+│   │       ├── accordion.tsx
+│   │       ├── alert-dialog.tsx
+│   │       ├── alert.tsx
+│   │       ├── aspect-ratio.tsx
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── breadcrumb.tsx
+│   │       ├── button-group.tsx
+│   │       ├── button.tsx
+│   │       ├── calendar.tsx
+│   │       ├── card.tsx
+│   │       ├── carousel.tsx
+│   │       ├── chart.tsx
+│   │       ├── checkbox.tsx
+│   │       ├── collapsible.tsx
+│   │       ├── command.tsx
+│   │       ├── context-menu.tsx
+│   │       ├── dialog.tsx
+│   │       ├── drawer.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── empty.tsx
+│   │       ├── field.tsx
+│   │       ├── form.tsx
+│   │       ├── hover-card.tsx
+│   │       ├── input-group.tsx
+│   │       ├── input-otp.tsx
+│   │       ├── input.tsx
+│   │       ├── item.tsx
+│   │       ├── kbd.tsx
+│   │       ├── label.tsx
+│   │       ├── menubar.tsx
+│   │       ├── navigation-menu.tsx
+│   │       ├── pagination.tsx
+│   │       ├── popover.tsx
+│   │       ├── progress.tsx
+│   │       ├── radio-group.tsx
+│   │       ├── resizable.tsx
+│   │       ├── scroll-area.tsx
+│   │       ├── select.tsx
+│   │       ├── separator.tsx
+│   │       ├── sheet.tsx
+│   │       ├── sidebar.tsx
+│   │       ├── skeleton.tsx
+│   │       ├── slider.tsx
+│   │       ├── sonner.tsx
+│   │       ├── spinner.tsx
+│   │       ├── switch.tsx
+│   │       ├── table.tsx
+│   │       ├── tabs.tsx
+│   │       ├── textarea.tsx
+│   │       ├── toast.tsx
+│   │       ├── toaster.tsx
+│   │       ├── toggle-group.tsx
+│   │       ├── toggle.tsx
+│   │       ├── tooltip.tsx
+│   │       ├── use-mobile.tsx
+│   │       └── use-toast.ts
+│   ├── components.json
+│   ├── hooks
+│   │   ├── use-agenda.ts
+│   │   ├── use-auth.ts
+│   │   ├── use-canchas-query.ts
+│   │   ├── use-estadisticas-query.ts
+│   │   ├── use-mobile.ts
+│   │   ├── use-notifications.ts
+│   │   ├── use-partido-detalle.ts
+│   │   ├── use-partidos-query.ts
+│   │   ├── use-profile-query.ts
+│   │   ├── use-register.ts
+│   │   ├── use-reservas-query.ts
+│   │   ├── use-toast.ts
+│   │   └── use-torneos-query.ts
+│   ├── lib
+│   │   ├── api-client.ts
+│   │   ├── schemas.ts
+│   │   └── utils.ts
+│   ├── next-env.d.ts
+│   ├── next.config.mjs
+│   ├── package.json
+│   ├── pnpm-lock.yaml
+│   ├── pnpm-workspace.yaml
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── football-bg.jpg
+│   │   ├── hero-canchas.jpg
+│   │   ├── icon.svg
+│   │   ├── logo-partidoya.jpg
+│   │   ├── logo-teamup.jpg
+│   │   ├── pelotarda.png
+│   │   ├── placeholder-logo.png
+│   │   ├── placeholder-logo.svg
+│   │   ├── placeholder-user.jpg
+│   │   ├── placeholder.jpg
+│   │   ├── placeholder.svg
+│   │   ├── sports-hero.jpg
+│   │   ├── ver_centro.png
+│   │   └── ver_centro1.png
+│   ├── services
+│   │   ├── auth.service.ts
+│   │   ├── canchas.service.ts
+│   │   ├── estadisticas.service.ts
+│   │   ├── notificaciones.service.ts
+│   │   ├── partidos.service.ts
+│   │   ├── reservas.service.ts
+│   │   ├── torneos.service.ts
+│   │   └── users.service.ts
+│   ├── styles
+│   │   └── globals.css
+│   ├── tsconfig.json
+│   └── tsconfig.tsbuildinfo
+├── generate_tree.py
+├── package.json
+├── perfiles_y_instrucciones.md
+├── pnpm-lock.yaml
+├── presentación
+│   ├── 1.png:Zone.Identifier
+│   ├── camila.png
+│   ├── carlos.png
+│   ├── dossierQR.png
+│   ├── dossier_partidoya.pdf
+│   ├── equipo.html
+│   ├── manuel.png
+│   ├── martin.png
+│   ├── milagros.png
+│   ├── presentacion.html
+│   └── tomas.png
+├── pytest.ini
+├── repo_tree.txt
+└── requirements.txt

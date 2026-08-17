@@ -36,7 +36,7 @@ def _validar_fecha_futura(fecha_partido: date, hora_partido, mensaje_error: str)
     # Si hora_partido es naive, le asignamos la zona horaria local
     hora_aware = hora_partido.replace(tzinfo=TZ_LOCAL) if getattr(hora_partido, 'tzinfo', None) is None else hora_partido
     
-    if fecha_partido < now.date() or (fecha_partido == now.date() and hora_aware <= now.time()):
+    if fecha_partido < now.date() or (fecha_partido == now.date() and hora_aware <= now.timetz()):
         raise HTTPException(status_code=400, detail=mensaje_error)
 
 def _validar_y_obtener_datos_cancha(db: Session, cancha_id: int, fecha: date, horario, excluir_partido_id: int = None, for_update: bool = False):
