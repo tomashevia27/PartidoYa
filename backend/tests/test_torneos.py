@@ -1,6 +1,7 @@
 import pytest
 from datetime import datetime, timedelta
 from sqlalchemy import text
+from unittest.mock import patch
 
 @pytest.fixture
 def torneo_payload():
@@ -269,3 +270,323 @@ def test_us19_21_programar_y_cargar_resultado(client, organizador_activo, usuari
         with open("/app/backend/traceback_us19.txt", "w") as f:
             f.write(traceback.format_exc())
         raise e
+
+# ==========================================
+# Cobertura de funciones N+1 refactorizadas (Fase 3)
+# ==========================================
+
+def test_estadisticas_torneo_vacio(client, organizador_activo, torneo_payload):
+    """obtener_estadisticas_torneo: torneo sin partidos ni estadísticas → listas vacías"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    res = client.get(f"/api/torneos/{t_id}/estadisticas")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["jugadores"] == []
+    assert data["equipos"] == []
+
+
+def test_top_goleadores_vacio(client, organizador_activo, torneo_payload):
+    """top_jugadores_por_goles: torneo sin stats → lista vacía"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    res = client.get(f"/api/torneos/{t_id}/top/goleadores")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_top_amarillas_vacio(client, organizador_activo, torneo_payload):
+    """top_jugadores_por_amarillas: torneo sin stats → lista vacía"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    res = client.get(f"/api/torneos/{t_id}/top/amarillas")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_top_rojas_vacio(client, organizador_activo, torneo_payload):
+    """top_jugadores_por_rojas: torneo sin stats → lista vacía"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    res = client.get(f"/api/torneos/{t_id}/top/rojas")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_vallas_invictas_vacio(client, organizador_activo, torneo_payload):
+    """top_equipos_vallas_invictas: torneo sin partidos finalizados → lista vacía"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    res = client.get(f"/api/torneos/{t_id}/top/vallas-invictas")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_tabla_posiciones_sin_fixture(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """tabla_posiciones_torneo: equipos inscriptos sin fixture → todos con 0 puntos"""
+    torneo_payload["formato"] = "todos_contra_todos"
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res = client.get(f"/api/torneos/{t_id}/tabla-posiciones")
+    assert res.status_code == 200
+    tabla = res.json()
+    assert len(tabla) == 4
+    for pos in tabla:
+        assert pos["pts"] == 0
+        assert pos["pj"] == 0
+        assert pos["gf"] == 0
+        assert pos["gc"] == 0
+        assert pos["dg"] == 0
+
+
+def test_estadisticas_jugador_torneo_vacio(client, organizador_activo, usuario_comun_activo, torneo_payload):
+    """estadisticas_jugador_por_torneo: jugador sin stats en un torneo → lista vacía"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+    uid = usuario_comun_activo["usuario"].id
+
+    res = client.get(f"/api/torneos/{t_id}/jugador/{uid}/estadisticas")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+def test_top_goleadores_con_datos(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """top_jugadores_por_goles: con stats cargadas, verifica ranking correcto"""
+    from app.models.usuario_model import Usuario
+    import uuid
+
+    torneo_payload["formato"] = "todos_contra_todos"
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_fix = client.post(f"/api/torneos/{t_id}/fixture", headers=organizador_activo["headers"])
+    assert res_fix.status_code == 200
+    p_id = res_fix.json()[0]["id"]
+
+    res_cancha = client.post("/canchas", json={
+        "nombre": "Cancha Test", "tipo_superficie": "cesped", "tamano": 5, "iluminacion": True,
+        "techada": False, "precio_por_turno": 10000, "zona": "CABA", "direccion": "Dir",
+        "hora_apertura": "10:00", "hora_cierre": "23:00", "duracion_turno": 60, "dias_operativos": 127
+    }, headers=organizador_activo["headers"])
+    cancha_id = res_cancha.json()["cancha"]["id"]
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    client.put(f"/api/torneos/partidos/{p_id}", json={
+        "fecha": hoy, "horario": "15:00", "cancha_id": cancha_id
+    }, headers=organizador_activo["headers"])
+
+    db_session.execute(text(f"UPDATE partidos_torneo SET fecha = '2020-01-01' WHERE id = {p_id}"))
+    db_session.commit()
+
+    partidos_row = res_fix.json()
+    eq_local_id = partidos_row[0].get("equipo_local", {})
+    eq_visit_id = partidos_row[0].get("equipo_visitante", {})
+    eq_local_id = eq_local_id.get("id") if isinstance(eq_local_id, dict) else eq_local_id
+    eq_visit_id = eq_visit_id.get("id") if isinstance(eq_visit_id, dict) else eq_visit_id
+
+    uid_jugador_local = None
+    uid_jugador_visitante = None
+    from app.models.equipo_model import Equipo
+    eq_local = db_session.query(Equipo).filter_by(id=eq_local_id).first()
+    eq_visit = db_session.query(Equipo).filter_by(id=eq_visit_id).first()
+    if eq_local and eq_local.jugadores:
+        uid_jugador_local = eq_local.jugadores[0].id
+    if eq_visit and eq_visit.jugadores:
+        uid_jugador_visitante = eq_visit.jugadores[0].id
+
+    stats = []
+    if uid_jugador_local:
+        stats.append({"usuario_id": uid_jugador_local, "equipo_id": eq_local_id, "goles": 3, "amarillas": 0, "rojas": 0})
+    if uid_jugador_visitante:
+        stats.append({"usuario_id": uid_jugador_visitante, "equipo_id": eq_visit_id, "goles": 1, "amarillas": 1, "rojas": 0})
+
+    client.post(f"/api/torneos/partidos/{p_id}/resultado", json={
+        "goles_local": 3, "goles_visitante": 1, "estadisticas_jugadores": stats
+    }, headers=organizador_activo["headers"])
+
+    res_top = client.get(f"/api/torneos/{t_id}/top/goleadores")
+    assert res_top.status_code == 200
+    top = res_top.json()
+    assert len(top) > 0
+    assert top[0]["valor"] >= top[-1]["valor"]
+
+
+def test_tabla_posiciones_despues_de_resultado(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """tabla_posiciones_torneo: después de cargar resultado, puntos se reflejan correctamente"""
+    from app.models.equipo_model import Equipo
+
+    torneo_payload["formato"] = "todos_contra_todos"
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_fix = client.post(f"/api/torneos/{t_id}/fixture", headers=organizador_activo["headers"])
+    assert res_fix.status_code == 200
+    p_id = res_fix.json()[0]["id"]
+
+    res_cancha = client.post("/canchas", json={
+        "nombre": "Cancha T", "tipo_superficie": "cesped", "tamano": 5, "iluminacion": True,
+        "techada": False, "precio_por_turno": 10000, "zona": "CABA", "direccion": "Dir",
+        "hora_apertura": "10:00", "hora_cierre": "23:00", "duracion_turno": 60, "dias_operativos": 127
+    }, headers=organizador_activo["headers"])
+    cancha_id = res_cancha.json()["cancha"]["id"]
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    client.put(f"/api/torneos/partidos/{p_id}", json={
+        "fecha": hoy, "horario": "16:00", "cancha_id": cancha_id
+    }, headers=organizador_activo["headers"])
+    db_session.execute(text(f"UPDATE partidos_torneo SET fecha = '2020-01-01' WHERE id = {p_id}"))
+    db_session.commit()
+
+    client.post(f"/api/torneos/partidos/{p_id}/resultado", json={
+        "goles_local": 2, "goles_visitante": 0, "jugadores_stats": []
+    }, headers=organizador_activo["headers"])
+
+    res_tabla = client.get(f"/api/torneos/{t_id}/tabla-posiciones")
+    assert res_tabla.status_code == 200
+    tabla = res_tabla.json()
+    assert len(tabla) == 4
+
+    ganador = next((p for p in tabla if p["pts"] == 3), None)
+    perdedor = next((p for p in tabla if p["pts"] == 0 and p["pj"] == 1), None)
+    assert ganador is not None
+    assert perdedor is not None
+    assert ganador["pg"] == 1
+    assert ganador["gf"] == 2
+    assert perdedor["pp"] == 1
+    assert perdedor["gc"] == 2
+
+
+def test_estadisticas_torneo_con_datos(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """obtener_estadisticas_torneo: con datos, verifica agregación por jugador y equipo"""
+    from app.models.equipo_model import Equipo
+
+    torneo_payload["formato"] = "todos_contra_todos"
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_fix = client.post(f"/api/torneos/{t_id}/fixture", headers=organizador_activo["headers"])
+    assert res_fix.status_code == 200
+    p_id = res_fix.json()[0]["id"]
+
+    res_cancha = client.post("/canchas", json={
+        "nombre": "Cancha E", "tipo_superficie": "cesped", "tamano": 5, "iluminacion": True,
+        "techada": False, "precio_por_turno": 10000, "zona": "CABA", "direccion": "Dir",
+        "hora_apertura": "10:00", "hora_cierre": "23:00", "duracion_turno": 60, "dias_operativos": 127
+    }, headers=organizador_activo["headers"])
+    cancha_id = res_cancha.json()["cancha"]["id"]
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    client.put(f"/api/torneos/partidos/{p_id}", json={
+        "fecha": hoy, "horario": "17:00", "cancha_id": cancha_id
+    }, headers=organizador_activo["headers"])
+    db_session.execute(text(f"UPDATE partidos_torneo SET fecha = '2020-01-01' WHERE id = {p_id}"))
+    db_session.commit()
+
+    partidos_data = res_fix.json()
+    eq_local_id = partidos_data[0].get("equipo_local", {})
+    eq_visit_id = partidos_data[0].get("equipo_visitante", {})
+    eq_local_id = eq_local_id.get("id") if isinstance(eq_local_id, dict) else eq_local_id
+    eq_visit_id = eq_visit_id.get("id") if isinstance(eq_visit_id, dict) else eq_visit_id
+
+    eq_local = db_session.query(Equipo).filter_by(id=eq_local_id).first()
+    eq_visit = db_session.query(Equipo).filter_by(id=eq_visit_id).first()
+    uid_local = eq_local.jugadores[0].id if eq_local and eq_local.jugadores else None
+    uid_visit = eq_visit.jugadores[0].id if eq_visit and eq_visit.jugadores else None
+
+    stats = []
+    if uid_local:
+        stats.append({"usuario_id": uid_local, "equipo_id": eq_local_id, "goles": 2, "amarillas": 1, "rojas": 0})
+    if uid_visit:
+        stats.append({"usuario_id": uid_visit, "equipo_id": eq_visit_id, "goles": 0, "amarillas": 0, "rojas": 1})
+
+    client.post(f"/api/torneos/partidos/{p_id}/resultado", json={
+        "goles_local": 2, "goles_visitante": 0, "estadisticas_jugadores": stats
+    }, headers=organizador_activo["headers"])
+
+    res_est = client.get(f"/api/torneos/{t_id}/estadisticas")
+    assert res_est.status_code == 200
+    data = res_est.json()
+
+    assert len(data["jugadores"]) > 0
+    assert len(data["equipos"]) > 0
+
+    if uid_local:
+        j_local = next((j for j in data["jugadores"] if j["usuario_id"] == uid_local), None)
+        assert j_local is not None
+        assert j_local["goles"] == 2
+        assert j_local["amarillas"] == 1
+
+
+def test_estadisticas_jugador_por_torneo_con_datos(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """estadisticas_jugador_por_torneo: con datos, verifica respuesta por partido"""
+    from app.models.equipo_model import Equipo
+
+    torneo_payload["formato"] = "todos_contra_todos"
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_fix = client.post(f"/api/torneos/{t_id}/fixture", headers=organizador_activo["headers"])
+    assert res_fix.status_code == 200
+    p_id = res_fix.json()[0]["id"]
+
+    res_cancha = client.post("/canchas", json={
+        "nombre": "Cancha J", "tipo_superficie": "cesped", "tamano": 5, "iluminacion": True,
+        "techada": False, "precio_por_turno": 10000, "zona": "CABA", "direccion": "Dir",
+        "hora_apertura": "10:00", "hora_cierre": "23:00", "duracion_turno": 60, "dias_operativos": 127
+    }, headers=organizador_activo["headers"])
+    cancha_id = res_cancha.json()["cancha"]["id"]
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    client.put(f"/api/torneos/partidos/{p_id}", json={
+        "fecha": hoy, "horario": "18:00", "cancha_id": cancha_id
+    }, headers=organizador_activo["headers"])
+    db_session.execute(text(f"UPDATE partidos_torneo SET fecha = '2020-01-01' WHERE id = {p_id}"))
+    db_session.commit()
+
+    partidos_data = res_fix.json()
+    eq_local_id = partidos_data[0].get("equipo_local", {})
+    eq_visit_id = partidos_data[0].get("equipo_visitante", {})
+    eq_local_id = eq_local_id.get("id") if isinstance(eq_local_id, dict) else eq_local_id
+    eq_visit_id = eq_visit_id.get("id") if isinstance(eq_visit_id, dict) else eq_visit_id
+
+    eq_local = db_session.query(Equipo).filter_by(id=eq_local_id).first()
+    uid_jugador = eq_local.jugadores[0].id if eq_local and eq_local.jugadores else None
+
+    if uid_jugador:
+        stats = [{"usuario_id": uid_jugador, "equipo_id": eq_local_id, "goles": 1, "amarillas": 0, "rojas": 0}]
+        client.post(f"/api/torneos/partidos/{p_id}/resultado", json={
+            "goles_local": 1, "goles_visitante": 0, "estadisticas_jugadores": stats
+        }, headers=organizador_activo["headers"])
+
+        res = client.get(f"/api/torneos/{t_id}/jugador/{uid_jugador}/estadisticas")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        assert data[0]["goles"] == 1
+        assert data[0]["equipo_id"] == eq_local_id

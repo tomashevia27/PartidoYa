@@ -23,11 +23,11 @@
 
 ## FASE 3 — Performance: Resolución de N+1 (Impacto ALTO en producción)
 
-- [ ] **3.1** N+1 en `estadisticas_jugador_por_torneo` — Reemplazar el `for` con query individual por un `JOIN` con `joinedload`. | `partido_torneo_service.py`
-- [ ] **3.2** N+1 en `obtener_estadisticas_torneo` — Cargar `usuario` y `equipo` eagerly via `selectinload()`. | `partido_torneo_service.py`
-- [ ] **3.3** N+1 en `top_jugadores_por_goles/amarillas/rojas` — `selectinload` + consolidar las 3 funciones en una parametrizada `_top_jugadores(db, torneo_id, campo_stat, limit)`. | `partido_torneo_service.py`
-- [ ] **3.4** N+1 en `tabla_posiciones_torneo` — Consulta por equipo para resolver grupo: mover a una sola query con `selectinload`. | `partido_torneo_service.py`
-- [ ] **3.5** Índices de agenda — Crear índices en columnas `fecha`, `estado` en `partidos` y `reservas`. | Modelos o migración
+- [x] **3.1** N+1 en `estadisticas_jugador_por_torneo` — Reemplazar el `for` con query individual por un `JOIN` con `joinedload`. | `partido_torneo_service.py`
+- [x] **3.2** N+1 en `obtener_estadisticas_torneo` — Cargar `usuario` y `equipo` eagerly via `selectinload()`. | `partido_torneo_service.py`
+- [x] **3.3** N+1 en `top_jugadores_por_goles/amarillas/rojas` — `selectinload` + consolidar las 3 funciones en una parametrizada `_top_jugadores(db, torneo_id, campo_stat, limit)`. | `partido_torneo_service.py`
+- [x] **3.4** N+1 en `tabla_posiciones_torneo` — Consulta por equipo para resolver grupo: mover a una sola query con `selectinload`. | `partido_torneo_service.py`
+- [x] **3.5** Índices de agenda — Crear índices en columnas `fecha`, `estado` en `partidos` y `reservas`. | Modelos o migración
 
 **Checkpoint**: `pytest backend/tests/test_torneos.py` + `pytest backend/tests/test_partidos.py`
 

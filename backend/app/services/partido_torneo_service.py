@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from datetime import datetime, date, time
 from collections import defaultdict
 
@@ -227,6 +227,9 @@ def obtener_estadisticas_torneo(db: Session, torneo_id: int) -> EstadisticasTorn
 
     registros = db.query(EstadisticaJugadorPartidoTorneo).filter(
         EstadisticaJugadorPartidoTorneo.torneo_id == torneo_id
+    ).options(
+        selectinload(EstadisticaJugadorPartidoTorneo.usuario),
+        selectinload(EstadisticaJugadorPartidoTorneo.equipo),
     ).all()
 
     if not registros:
@@ -281,16 +284,19 @@ def obtener_estadisticas_torneo(db: Session, torneo_id: int) -> EstadisticasTorn
     return EstadisticasTorneoResponse(jugadores=jugadores_response, equipos=equipos_response)
 
 
-def top_jugadores_por_goles(db: Session, torneo_id: int, limit: int = 10) -> list[TopJugadorResponse]:
+def _top_jugadores_por_stat(db: Session, torneo_id: int, campo_stat: str, limit: int = 10) -> list[TopJugadorResponse]:
     registros = db.query(EstadisticaJugadorPartidoTorneo).filter(
         EstadisticaJugadorPartidoTorneo.torneo_id == torneo_id
+    ).options(
+        selectinload(EstadisticaJugadorPartidoTorneo.usuario),
+        selectinload(EstadisticaJugadorPartidoTorneo.equipo),
     ).all()
 
     acumulado = {}
     for r in registros:
         key = (r.usuario_id, r.equipo_id)
         acumulado.setdefault(key, {"usuario": r.usuario, "equipo": r.equipo, "valor": 0})
-        acumulado[key]["valor"] += r.goles
+        acumulado[key]["valor"] += getattr(r, campo_stat)
 
     items = [TopJugadorResponse(
         usuario_id=k[0],
@@ -303,64 +309,44 @@ def top_jugadores_por_goles(db: Session, torneo_id: int, limit: int = 10) -> lis
 
     items.sort(key=lambda x: x.valor, reverse=True)
     return items[:limit]
+
+
+def top_jugadores_por_goles(db: Session, torneo_id: int, limit: int = 10) -> list[TopJugadorResponse]:
+    return _top_jugadores_por_stat(db, torneo_id, "goles", limit)
 
 
 def top_jugadores_por_amarillas(db: Session, torneo_id: int, limit: int = 10) -> list[TopJugadorResponse]:
-    registros = db.query(EstadisticaJugadorPartidoTorneo).filter(
-        EstadisticaJugadorPartidoTorneo.torneo_id == torneo_id
-    ).all()
-
-    acumulado = {}
-    for r in registros:
-        key = (r.usuario_id, r.equipo_id)
-        acumulado.setdefault(key, {"usuario": r.usuario, "equipo": r.equipo, "valor": 0})
-        acumulado[key]["valor"] += r.amarillas
-
-    items = [TopJugadorResponse(
-        usuario_id=k[0],
-        usuario_nombre=v["usuario"].nombre if v["usuario"] else "",
-        usuario_apellido=v["usuario"].apellido if v["usuario"] else "",
-        equipo_id=k[1],
-        equipo_nombre=v["equipo"].nombre if v["equipo"] else "",
-        valor=v["valor"],
-    ) for k, v in acumulado.items()]
-
-    items.sort(key=lambda x: x.valor, reverse=True)
-    return items[:limit]
+    return _top_jugadores_por_stat(db, torneo_id, "amarillas", limit)
 
 
 def top_jugadores_por_rojas(db: Session, torneo_id: int, limit: int = 10) -> list[TopJugadorResponse]:
-    registros = db.query(EstadisticaJugadorPartidoTorneo).filter(
-        EstadisticaJugadorPartidoTorneo.torneo_id == torneo_id
-    ).all()
-
-    acumulado = {}
-    for r in registros:
-        key = (r.usuario_id, r.equipo_id)
-        acumulado.setdefault(key, {"usuario": r.usuario, "equipo": r.equipo, "valor": 0})
-        acumulado[key]["valor"] += r.rojas
-
-    items = [TopJugadorResponse(
-        usuario_id=k[0],
-        usuario_nombre=v["usuario"].nombre if v["usuario"] else "",
-        usuario_apellido=v["usuario"].apellido if v["usuario"] else "",
-        equipo_id=k[1],
-        equipo_nombre=v["equipo"].nombre if v["equipo"] else "",
-        valor=v["valor"],
-    ) for k, v in acumulado.items()]
-
-    items.sort(key=lambda x: x.valor, reverse=True)
-    return items[:limit]
+    return _top_jugadores_por_stat(db, torneo_id, "rojas", limit)
 
 
 def tabla_posiciones_torneo(db: Session, torneo_id: int) -> list[TablaPosicionResponse]:
-    torneo = db.query(Torneo).filter(Torneo.id == torneo_id).first()
+    torneo = db.query(Torneo).filter(Torneo.id == torneo_id).options(
+        selectinload(Torneo.equipos_inscriptos),
+    ).first()
     if not torneo:
         return []
 
-    # Mapa de posiciones existentes por equipo_id
     posiciones_existentes = db.query(TablaPosiciones).filter(TablaPosiciones.torneo_id == torneo_id).all()
     posiciones_map = {pos.equipo_id: pos for pos in posiciones_existentes}
+
+    equipos_sin_posicion = [eq for eq in torneo.equipos_inscriptos if eq.id not in posiciones_map]
+    grupo_map = {}
+    if equipos_sin_posicion:
+        equipo_ids = [eq.id for eq in equipos_sin_posicion]
+        partidos = db.query(PartidoTorneo).filter(
+            PartidoTorneo.torneo_id == torneo_id,
+            PartidoTorneo.grupo.isnot(None),
+            (PartidoTorneo.equipo_local_id.in_(equipo_ids)) | (PartidoTorneo.equipo_visitante_id.in_(equipo_ids))
+        ).all()
+        for partido in partidos:
+            if partido.equipo_local_id and partido.equipo_local_id not in grupo_map:
+                grupo_map[partido.equipo_local_id] = partido.grupo
+            if partido.equipo_visitante_id and partido.equipo_visitante_id not in grupo_map:
+                grupo_map[partido.equipo_visitante_id] = partido.grupo
 
     tabla = []
     for equipo in torneo.equipos_inscriptos:
@@ -380,26 +366,11 @@ def tabla_posiciones_torneo(db: Session, torneo_id: int) -> list[TablaPosicionRe
                 grupo=pos.grupo,
             ))
         else:
-            # Buscar el grupo en algún partido de este equipo (si el fixture ya se generó)
-            partido = db.query(PartidoTorneo).filter(
-                PartidoTorneo.torneo_id == torneo_id,
-                (PartidoTorneo.equipo_local_id == equipo.id) | (PartidoTorneo.equipo_visitante_id == equipo.id)
-            ).first()
-            grupo_equipo = partido.grupo if partido else None
-
-            # Equipo inscripto pero sin partidos jugados aún
             tabla.append(TablaPosicionResponse(
                 equipo_id=equipo.id,
                 equipo_nombre=equipo.nombre,
-                pts=0,
-                pj=0,
-                pg=0,
-                pe=0,
-                pp=0,
-                gf=0,
-                gc=0,
-                dg=0,
-                grupo=grupo_equipo,
+                pts=0, pj=0, pg=0, pe=0, pp=0, gf=0, gc=0, dg=0,
+                grupo=grupo_map.get(equipo.id),
             ))
 
     tabla.sort(key=lambda x: (x.grupo or "", -x.pts, -x.dg, -x.gf, x.gc))
@@ -410,11 +381,25 @@ def estadisticas_jugador_por_torneo(db: Session, torneo_id: int, usuario_id: int
     registros = db.query(EstadisticaJugadorPartidoTorneo).filter(
         EstadisticaJugadorPartidoTorneo.torneo_id == torneo_id,
         EstadisticaJugadorPartidoTorneo.usuario_id == usuario_id,
-    ).all()
+    ).options(selectinload(EstadisticaJugadorPartidoTorneo.equipo)).all()
+
+    if not registros:
+        return []
+
+    partido_ids = list({r.partido_id for r in registros})
+    partidos_map = {}
+    if partido_ids:
+        partidos = db.query(PartidoTorneo).filter(
+            PartidoTorneo.id.in_(partido_ids)
+        ).options(
+            selectinload(PartidoTorneo.equipo_local),
+            selectinload(PartidoTorneo.equipo_visitante),
+        ).all()
+        partidos_map = {p.id: p for p in partidos}
 
     resultado = []
     for r in registros:
-        partido = db.query(PartidoTorneo).filter(PartidoTorneo.id == r.partido_id).first()
+        partido = partidos_map.get(r.partido_id)
         equipo_oponente_id = None
         equipo_oponente_nombre = None
         if partido:
@@ -437,7 +422,6 @@ def estadisticas_jugador_por_torneo(db: Session, torneo_id: int, usuario_id: int
             "rojas": r.rojas,
         })
 
-    # order by partido fecha asc
     resultado.sort(key=lambda x: (x["fecha"] or date.min))
     return resultado
 

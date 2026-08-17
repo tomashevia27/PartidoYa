@@ -36,7 +36,8 @@ class PartidoTorneo(Base):
     torneo_id = Column(
         Integer,
         ForeignKey("torneos.id"),
-        nullable=False
+        nullable=False,
+        index=True
     )
 
     equipo_local_id = Column(
@@ -57,7 +58,7 @@ class PartidoTorneo(Base):
         nullable=True
     )
 
-    fecha = Column(Date, nullable=True)
+    fecha = Column(Date, nullable=True, index=True)
     horario = Column(Time, nullable=True)
     goles_local = Column(Integer, nullable=True)
     goles_visitante = Column(Integer, nullable=True)
@@ -67,7 +68,8 @@ class PartidoTorneo(Base):
     estado = Column(
         Enum(EstadoPartidoTorneo, native_enum=False),
         nullable=False,
-        default=EstadoPartidoTorneo.pendiente
+        default=EstadoPartidoTorneo.pendiente,
+        index=True
     )
 
     torneo = relationship(

@@ -16,14 +16,14 @@ class Partido(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cancha_id = Column(Integer, ForeignKey("canchas.id"), nullable=False)
-    fecha = Column(Date, nullable=False)
+    fecha = Column(Date, nullable=False, index=True)
     horario = Column(Time, nullable=False)
     modalidad = Column(String, nullable=False)
     tipo = Column(String, nullable=False)  # "abierto" o "cerrado"
     cantidad_jugadores = Column(Integer, nullable=False)
     cupos_disponibles = Column(Integer, nullable=False, default=0)
     descripcion = Column(String, nullable=True)
-    estado = Column(String, nullable=False, default="pendiente")
+    estado = Column(String, nullable=False, default="pendiente", index=True)
     organizador_id = Column(Integer, ForeignKey("usuarios.id")) # hay que agregar nullable=False luego
     cliente_nombre = Column(String(200), nullable=True)
     cliente_apellido = Column(String(200), nullable=True)
