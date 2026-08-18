@@ -59,5 +59,12 @@ def obtener_todos(db: Session) -> list[Usuario]:
     return db.query(Usuario).all()
 
 
+def obtener_por_emails(db: Session, emails: list[str]) -> list[Usuario]:
+    """Busca usuarios por lista de emails (case-insensitive)."""
+    from sqlalchemy import func
+    emails_lower = [email.lower() for email in emails]
+    return db.query(Usuario).filter(func.lower(Usuario.email).in_(emails_lower)).all()
+
+
 def obtener_usuarios_por_ids(db: Session, ids: list[int]) -> list[Usuario]:
     return db.query(Usuario).filter(Usuario.id.in_(ids)).all()

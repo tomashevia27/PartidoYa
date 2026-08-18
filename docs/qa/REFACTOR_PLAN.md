@@ -35,11 +35,11 @@
 
 ## FASE 4 — Calidad de Código en Torneos y Fixture (Impacto MEDIO)
 
-- [ ] **4.1** Filtrado SQL en `listar_torneos_abiertos` — Bajar el filtrado de cupos/fechas de Python a SQL. | `torneo_service.py`, `torneo_repository.py`
-- [ ] **4.2** Repositorio en `inscribir_equipo` — Eliminar acceso directo a `Usuario`, usar `usuario_repository`. | `torneo_service.py`, `usuario_repository.py`
-- [ ] **4.3** Validaciones de `TorneoCreate` — Extraer validaciones del `@model_validator` a funciones unitarias. | `torneo_schemas.py`
-- [ ] **4.4** Fixture: Strategy explícita — Eliminar `fixture_service.py` (wrapper anémico) e inyectar generador directamente. | `fixture_service.py`, `torneo_service.py`
-- [ ] **4.5** Extraer `calcular_resultados_finales` — Mover a módulo independiente `torneo_resultados.py`. | Nuevo: `torneo_resultados.py`, Edit: `partido_torneo_service.py`
+- [x] **4.1** Filtrado SQL en `listar_torneos_abiertos` — Bajar el filtrado de cupos/fechas de Python a SQL. | `torneo_service.py`, `torneo_repository.py`
+- [x] **4.2** Repositorio en `inscribir_equipo` — Eliminar acceso directo a `Usuario`, usar `usuario_repository`. | `torneo_service.py`, `usuario_repository.py`
+- [x] **4.3** Validaciones de `TorneoCreate` — Extraer validaciones del `@model_validator` a funciones unitarias. | `torneo_schemas.py`
+- [x] **4.4** Fixture: Strategy explícita — Eliminar `fixture_service.py` (wrapper anémico) e inyectar generador directamente. | `fixture_service.py`, `torneo_service.py`
+- [x] **4.5** Extraer `calcular_resultados_finales` — Mover a módulo independiente `torneo_resultados.py`. | Nuevo: `torneo_resultados.py`, Edit: `partido_torneo_service.py`
 
 **Checkpoint**: `pytest backend/tests/test_torneos.py`
 

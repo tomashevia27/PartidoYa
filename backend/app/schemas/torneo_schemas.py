@@ -6,7 +6,6 @@ from .usuario_schemas import UsuarioRespuesta
 from .equipo_schemas import EquipoResponse, EquipoDetalleResponse
 from ..models.torneo_model import FormatoTorneo, EstadoTorneo
 
-# Valores válidos de max_equipos por formato
 _ED_VALIDOS = {2, 4, 8, 16, 32, 64}
 _TcT_MIN, _TcT_MAX = 4, 30
 _FG_SEMIS   = {6, 8, 10}
@@ -14,7 +13,58 @@ _FG_CUARTOS = {12, 16, 20}
 _FG_OCTAVOS = {24, 32, 40}
 _FG_TODOS   = _FG_SEMIS | _FG_CUARTOS | _FG_OCTAVOS
 _FASE_FINAL_VALIDOS = {"semis", "cuartos", "octavos"}
-_TAMANOS_VALIDOS = {5, 7, 9, 11}  # F5, F7, F9, F11
+_TAMANOS_VALIDOS = {5, 7, 9, 11}
+
+
+def validar_fechas_torneo(fecha_inicio: datetime, fecha_fin: datetime):
+    tz_local = timezone(timedelta(hours=-3))
+    ahora = datetime.now(tz_local).replace(tzinfo=None)
+    inicio = fecha_inicio.replace(tzinfo=None)
+    fin = fecha_fin.replace(tzinfo=None)
+    if inicio < ahora:
+        raise ValueError("La fecha de inicio no puede estar en el pasado")
+    if fin <= inicio:
+        raise ValueError("La fecha de fin debe ser posterior a la fecha de inicio")
+
+
+def validar_franja_horaria(franja_horaria: str):
+    try:
+        partes = franja_horaria.split("-")
+        if len(partes) != 2:
+            raise ValueError()
+        datetime.strptime(partes[0].strip(), "%H:%M")
+        datetime.strptime(partes[1].strip(), "%H:%M")
+        if partes[0].strip() >= partes[1].strip():
+            raise ValueError()
+    except ValueError:
+        raise ValueError("La franja horaria debe tener formato HH:MM-HH:MM y el cierre debe ser posterior a la apertura")
+
+
+def validar_tamano_equipo(min_integrantes: int):
+    if min_integrantes not in _TAMANOS_VALIDOS:
+        raise ValueError("El tamaño del equipo debe ser 5 (F5), 7 (F7), 9 (F9) o 11 (F11)")
+
+
+def validar_max_equipos_por_formato(formato: FormatoTorneo, max_equipos: int, fase_final: Optional[str] = None):
+    if formato == FormatoTorneo.eliminacion_directa:
+        if max_equipos not in _ED_VALIDOS:
+            raise ValueError("Para Eliminación Directa, la cantidad de equipos debe ser potencia de 2: 2, 4, 8, 16, 32 o 64")
+
+    elif formato == FormatoTorneo.todos_contra_todos:
+        if not (_TcT_MIN <= max_equipos <= _TcT_MAX):
+            raise ValueError(f"Para Todos contra Todos, la cantidad de equipos debe estar entre {_TcT_MIN} y {_TcT_MAX}")
+
+    elif formato == FormatoTorneo.fase_grupos:
+        if max_equipos not in _FG_TODOS:
+            raise ValueError("Para Fase de Grupos, la cantidad de equipos debe ser: 6-8-10 (semis), 12-16-20 (cuartos) o 24-32-40 (octavos)")
+        if not fase_final or fase_final not in _FASE_FINAL_VALIDOS:
+            raise ValueError("Para Fase de Grupos debe indicar la fase final: 'semis', 'cuartos' u 'octavos'")
+        if fase_final == "semis" and max_equipos not in _FG_SEMIS:
+            raise ValueError("Para Semifinales: deben ser 6, 8 o 10 equipos")
+        elif fase_final == "cuartos" and max_equipos not in _FG_CUARTOS:
+            raise ValueError("Para Cuartos de final: deben ser 12, 16 o 20 equipos")
+        elif fase_final == "octavos" and max_equipos not in _FG_OCTAVOS:
+            raise ValueError("Para Octavos de final: deben ser 24, 32 o 40 equipos")
 
 
 class TorneoBase(BaseModel):
@@ -39,55 +89,10 @@ class TorneoCreate(TorneoBase):
 
     @model_validator(mode='after')
     def validar_torneo(self):
-        # --- Validar fechas ---
-        tz_local = timezone(timedelta(hours=-3))
-        ahora = datetime.now(tz_local).replace(tzinfo=None)
-        inicio = self.fecha_inicio.replace(tzinfo=None)
-        fin = self.fecha_fin.replace(tzinfo=None)
-
-        if inicio < ahora:
-            raise ValueError("La fecha de inicio no puede estar en el pasado")
-        if fin <= inicio:
-            raise ValueError("La fecha de fin debe ser posterior a la fecha de inicio")
-
-        # --- Validar franja horaria ---
-        try:
-            partes = self.franja_horaria.split("-")
-            if len(partes) != 2:
-                raise ValueError()
-            datetime.strptime(partes[0], "%H:%M")
-            datetime.strptime(partes[1], "%H:%M")
-            if partes[0] >= partes[1]:
-                raise ValueError()
-        except ValueError:
-            raise ValueError("La franja horaria debe tener formato HH:MM-HH:MM y el cierre debe ser posterior a la apertura")
-
-        # --- Validar tamaño de equipo ---
-        if self.min_integrantes_por_equipo not in _TAMANOS_VALIDOS:
-            raise ValueError("El tamaño del equipo debe ser 5 (F5), 7 (F7), 9 (F9) o 11 (F11)")
-
-        # --- Validar max_equipos según formato ---
-        if self.formato == FormatoTorneo.eliminacion_directa:
-            if self.max_equipos not in _ED_VALIDOS:
-                raise ValueError("Para Eliminación Directa, la cantidad de equipos debe ser potencia de 2: 2, 4, 8, 16, 32 o 64")
-
-        elif self.formato == FormatoTorneo.todos_contra_todos:
-            if not (_TcT_MIN <= self.max_equipos <= _TcT_MAX):
-                raise ValueError(f"Para Todos contra Todos, la cantidad de equipos debe estar entre {_TcT_MIN} y {_TcT_MAX}")
-
-        elif self.formato == FormatoTorneo.fase_grupos:
-            if self.max_equipos not in _FG_TODOS:
-                raise ValueError("Para Fase de Grupos, la cantidad de equipos debe ser: 6-8-10 (semis), 12-16-20 (cuartos) o 24-32-40 (octavos)")
-            if not self.fase_final or self.fase_final not in _FASE_FINAL_VALIDOS:
-                raise ValueError("Para Fase de Grupos debe indicar la fase final: 'semis', 'cuartos' u 'octavos'")
-            # Coherencia cantidad-fase_final
-            if self.fase_final == "semis" and self.max_equipos not in _FG_SEMIS:
-                raise ValueError("Para Semifinales: deben ser 6, 8 o 10 equipos")
-            elif self.fase_final == "cuartos" and self.max_equipos not in _FG_CUARTOS:
-                raise ValueError("Para Cuartos de final: deben ser 12, 16 o 20 equipos")
-            elif self.fase_final == "octavos" and self.max_equipos not in _FG_OCTAVOS:
-                raise ValueError("Para Octavos de final: deben ser 24, 32 o 40 equipos")
-
+        validar_fechas_torneo(self.fecha_inicio, self.fecha_fin)
+        validar_franja_horaria(self.franja_horaria)
+        validar_tamano_equipo(self.min_integrantes_por_equipo)
+        validar_max_equipos_por_formato(self.formato, self.max_equipos, self.fase_final)
         return self
 
 

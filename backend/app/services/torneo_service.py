@@ -7,11 +7,11 @@ from ..models.usuario_model import Usuario
 
 from ..models.torneo_model import Torneo, EstadoTorneo
 from ..schemas.torneo_schemas import TorneoCreate, TorneoUpdate
-from ..repositories import torneo_repository
+from ..repositories import torneo_repository, usuario_repository
 from ..models.equipo_model import Equipo
 from ..schemas.equipo_schemas import InscripcionEquipoCreate 
 from .torneo_notificador import notificar_torneo_cancelado
-from ..services.fixture.fixture_service import FixtureService
+from ..services.fixture.fixture_factory import FixtureFactory
 from ..models.partido_torneo import PartidoTorneo
 
 from typing import List, Dict
@@ -112,11 +112,9 @@ def inscribir_equipo(db: Session, torneo_id: int, datos: InscripcionEquipoCreate
     if not datos.jugadores_emails or len(datos.jugadores_emails) == 0:
         raise DomainRuleError("El listado de los jugadores es obligatorio.")
 
-    from sqlalchemy import func
-    emails_busqueda = [email.lower() for email in datos.jugadores_emails]
-    jugadores = db.query(Usuario).filter(func.lower(Usuario.email).in_(emails_busqueda)).all()
+    jugadores = usuario_repository.obtener_por_emails(db, datos.jugadores_emails)
 
-    if len(jugadores) != len(set(emails_busqueda)):
+    if len(jugadores) != len(set(email.lower() for email in datos.jugadores_emails)):
         raise DomainRuleError("Uno o más emails del listado no pertenecen a usuarios registrados.")
 
     if creador_accion_id not in [jugador.id for jugador in jugadores]:
@@ -186,12 +184,10 @@ def bajar_equipo(db: Session, torneo_id: int, usuario_accion_id: int):
     return torneo
 
 def listar_torneos_abiertos(db: Session) -> List[Torneo]:
-    """Devuelve una lista de torneos con estado 'abierto' incluyendo cupos_restantes y fecha futura.
-    """
-    torneos = torneo_repository.obtener_todos(db, EstadoTorneo.abierto)
+    """Devuelve torneos abiertos con cupos libres y fecha futura. Filtrado en SQL."""
     tz_local = timezone(timedelta(hours=-3))
     ahora = datetime.now(tz_local).replace(tzinfo=None)
-    return [t for t in torneos if t.inscriptos < t.max_equipos and t.fecha_inicio.replace(tzinfo=None) >= ahora]
+    return torneo_repository.obtener_torneos_abiertos_disponibles(db, ahora)
 
 
 def listar_mis_torneos(db: Session, usuario_id: int) -> Dict[str, List[Dict]]:
@@ -292,7 +288,7 @@ def generar_fixture(
             detail="El fixture ya fue generado"
         )
 
-    partidos = FixtureService.generar(torneo)
+    partidos = FixtureFactory.crear(torneo.formato).generar(torneo)
 
     db.add_all(partidos)
     torneo.estado = EstadoTorneo.en_curso

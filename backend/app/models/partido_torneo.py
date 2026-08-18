@@ -21,6 +21,7 @@ class EstadoPartidoTorneo(str, enum.Enum):
 class FaseTorneo(str, enum.Enum):
     grupos = "grupos"
     liga = "liga"
+    treintaydosavos = "treintaydosavos"
     dieciseisavos = "dieciseisavos"
     octavos = "octavos"
     cuartos = "cuartos"

@@ -39,6 +39,17 @@ def obtener_todos(db: Session, estado: Optional[EstadoTorneo] = None) -> List[To
         query = query.filter(Torneo.estado == estado)
     return query.all()
 
+
+def obtener_torneos_abiertos_disponibles(db: Session, ahora) -> List[Torneo]:
+    """Torneos abiertos con cupos libres y fecha_inicio futura — filtrado en SQL."""
+    return db.query(Torneo).options(
+        joinedload(Torneo.equipos_inscriptos)
+    ).filter(
+        Torneo.estado == EstadoTorneo.abierto,
+        Torneo.inscriptos < Torneo.max_equipos,
+        Torneo.fecha_inicio >= ahora,
+    ).all()
+
 def obtener_torneos_por_usuario(db: Session, usuario_id: int) -> List[Torneo]:
     return db.query(Torneo).options(joinedload(Torneo.equipos_inscriptos)).distinct().join(
         Torneo.equipos_inscriptos, isouter=True

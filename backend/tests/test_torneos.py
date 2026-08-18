@@ -590,3 +590,47 @@ def test_estadisticas_jugador_por_torneo_con_datos(client, organizador_activo, u
         assert len(data) == 1
         assert data[0]["goles"] == 1
         assert data[0]["equipo_id"] == eq_local_id
+
+
+def test_listar_torneos_no_muestra_llenos(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """Torneo lleno (inscriptos == max_equipos) NO debe aparecer en la lista de disponibles"""
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(4):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_lista = client.get("/api/torneos/")
+    assert res_lista.status_code == 200
+    ids = [t["id"] for t in res_lista.json()]
+    assert t_id not in ids
+
+
+def test_listar_torneos_muestra_con_cupo(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+    """Torneo con 1 cupo restante SÍ debe aparecer en la lista de disponibles"""
+    torneo_payload["max_equipos"] = 4
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    for i in range(3):
+        inscribir_equipo(client, db_session, t_id, i)
+
+    res_lista = client.get("/api/torneos/")
+    assert res_lista.status_code == 200
+    ids = [t["id"] for t in res_lista.json()]
+    assert t_id in ids
+
+
+def test_listar_torneos_no_muestra_fecha_pasada(client, organizador_activo, torneo_payload, db_session):
+    """Torneo con fecha_inicio en el pasado NO debe aparecer en la lista de disponibles"""
+    res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
+    t_id = res_t.json()["id"]
+
+    db_session.execute(text(f"UPDATE torneos SET fecha_inicio = '2020-01-01' WHERE id = {t_id}"))
+    db_session.commit()
+
+    res_lista = client.get("/api/torneos/")
+    assert res_lista.status_code == 200
+    ids = [t["id"] for t in res_lista.json()]
+    assert t_id not in ids

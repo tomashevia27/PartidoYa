@@ -16,12 +16,16 @@ class EliminacionDirectaGenerator(FixtureGenerator):
         4: FaseTorneo.semifinal,
         8: FaseTorneo.cuartos,
         16: FaseTorneo.octavos,
+        32: FaseTorneo.dieciseisavos,
+        64: FaseTorneo.treintaydosavos,
     }
 
     ORDEN_FASES = {
+        FaseTorneo.treintaydosavos: FaseTorneo.dieciseisavos,
+        FaseTorneo.dieciseisavos: FaseTorneo.octavos,
         FaseTorneo.octavos: FaseTorneo.cuartos,
         FaseTorneo.cuartos: FaseTorneo.semifinal,
-        FaseTorneo.semifinal: FaseTorneo.final
+        FaseTorneo.semifinal: FaseTorneo.final,
     }
 
     def generar(self, torneo, equipos=None):
