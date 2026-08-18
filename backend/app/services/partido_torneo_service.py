@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, selectinload
 from datetime import datetime, date, time
-from collections import defaultdict
+from dataclasses import dataclass, field
 
 from ..models.tabla_posicion import TablaPosiciones
 from ..models.cancha_model import Cancha, DIAS_SEMANA_MAP
@@ -22,6 +22,50 @@ from ..schemas.partido_torneo_schemas import (
 from ..schemas.partido_torneo_schemas import TopJugadorResponse, TablaPosicionResponse, VallaInvictaResponse
 from ..services.fixture.eliminacion_directa_generator import EliminacionDirectaGenerator    
 from .partido_service import _validar_fecha_futura
+
+
+@dataclass
+class _AcumuladoJugador:
+    goles: int = 0
+    amarillas: int = 0
+    rojas: int = 0
+    usuario: object = None
+    equipo: object = None
+
+
+@dataclass
+class _AcumuladoEquipo:
+    goles: int = 0
+    amarillas: int = 0
+    rojas: int = 0
+    nombre: str = ""
+
+
+@dataclass
+class _AcumuladoStatJugador:
+    usuario: object = None
+    equipo: object = None
+    valor: int = 0
+
+
+@dataclass
+class _RegistroEstadisticaJugador:
+    partido_id: int = 0
+    fecha: object = None
+    equipo_id: int = 0
+    equipo_nombre: str = ""
+    equipo_oponente_id: int = None
+    equipo_oponente_nombre: str = None
+    goles: int = 0
+    amarillas: int = 0
+    rojas: int = 0
+
+
+@dataclass
+class _DatosEquipoPartido:
+    id: int = 0
+    gf: int = 0
+    gc: int = 0
 
 def obtener_partidos_torneo(db: Session, torneo_id: int) -> list[PartidoTorneo]:
     torneo = db.query(Torneo).filter(Torneo.id == torneo_id).first()
@@ -236,34 +280,35 @@ def obtener_estadisticas_torneo(db: Session, torneo_id: int) -> EstadisticasTorn
     if not registros:
         return EstadisticasTorneoResponse()
 
-    jugadores = defaultdict(lambda: {"goles": 0, "amarillas": 0, "rojas": 0, "usuario": None, "equipo": None})
-    equipos = defaultdict(lambda: {"goles": 0, "amarillas": 0, "rojas": 0, "nombre": None})
+    jugadores: dict[tuple[int, int], _AcumuladoJugador] = {}
+    equipos: dict[int, _AcumuladoEquipo] = {}
 
     for registro in registros:
         jugador_key = (registro.usuario_id, registro.equipo_id)
+        if jugador_key not in jugadores:
+            jugadores[jugador_key] = _AcumuladoJugador(usuario=registro.usuario, equipo=registro.equipo)
         jugador_bucket = jugadores[jugador_key]
-        jugador_bucket["goles"] += registro.goles
-        jugador_bucket["amarillas"] += registro.amarillas
-        jugador_bucket["rojas"] += registro.rojas
-        jugador_bucket["usuario"] = registro.usuario
-        jugador_bucket["equipo"] = registro.equipo
+        jugador_bucket.goles += registro.goles
+        jugador_bucket.amarillas += registro.amarillas
+        jugador_bucket.rojas += registro.rojas
 
+        if registro.equipo_id not in equipos:
+            equipos[registro.equipo_id] = _AcumuladoEquipo(nombre=registro.equipo.nombre)
         equipo_bucket = equipos[registro.equipo_id]
-        equipo_bucket["goles"] += registro.goles
-        equipo_bucket["amarillas"] += registro.amarillas
-        equipo_bucket["rojas"] += registro.rojas
-        equipo_bucket["nombre"] = registro.equipo.nombre
+        equipo_bucket.goles += registro.goles
+        equipo_bucket.amarillas += registro.amarillas
+        equipo_bucket.rojas += registro.rojas
 
     jugadores_response = [
         EstadisticaJugadorTorneoResponse(
             usuario_id=usuario_id,
-            usuario_nombre=data["usuario"].nombre if data["usuario"] else "",
-            usuario_apellido=data["usuario"].apellido if data["usuario"] else "",
+            usuario_nombre=data.usuario.nombre if data.usuario else "",
+            usuario_apellido=data.usuario.apellido if data.usuario else "",
             equipo_id=equipo_id,
-            equipo_nombre=data["equipo"].nombre if data["equipo"] else "",
-            goles=data["goles"],
-            amarillas=data["amarillas"],
-            rojas=data["rojas"],
+            equipo_nombre=data.equipo.nombre if data.equipo else "",
+            goles=data.goles,
+            amarillas=data.amarillas,
+            rojas=data.rojas,
         )
         for (usuario_id, equipo_id), data in jugadores.items()
     ]
@@ -271,10 +316,10 @@ def obtener_estadisticas_torneo(db: Session, torneo_id: int) -> EstadisticasTorn
     equipos_response = [
         EstadisticaEquipoTorneoResponse(
             equipo_id=equipo_id,
-            equipo_nombre=data["nombre"] or "",
-            goles=data["goles"],
-            amarillas=data["amarillas"],
-            rojas=data["rojas"],
+            equipo_nombre=data.nombre,
+            goles=data.goles,
+            amarillas=data.amarillas,
+            rojas=data.rojas,
         )
         for equipo_id, data in equipos.items()
     ]
@@ -293,19 +338,20 @@ def _top_jugadores_por_stat(db: Session, torneo_id: int, campo_stat: str, limit:
         selectinload(EstadisticaJugadorPartidoTorneo.equipo),
     ).all()
 
-    acumulado = {}
+    acumulado: dict[tuple[int, int], _AcumuladoStatJugador] = {}
     for r in registros:
         key = (r.usuario_id, r.equipo_id)
-        acumulado.setdefault(key, {"usuario": r.usuario, "equipo": r.equipo, "valor": 0})
-        acumulado[key]["valor"] += getattr(r, campo_stat)
+        if key not in acumulado:
+            acumulado[key] = _AcumuladoStatJugador(usuario=r.usuario, equipo=r.equipo)
+        acumulado[key].valor += getattr(r, campo_stat)
 
     items = [TopJugadorResponse(
         usuario_id=k[0],
-        usuario_nombre=v["usuario"].nombre if v["usuario"] else "",
-        usuario_apellido=v["usuario"].apellido if v["usuario"] else "",
+        usuario_nombre=v.usuario.nombre if v.usuario else "",
+        usuario_apellido=v.usuario.apellido if v.usuario else "",
         equipo_id=k[1],
-        equipo_nombre=v["equipo"].nombre if v["equipo"] else "",
-        valor=v["valor"],
+        equipo_nombre=v.equipo.nombre if v.equipo else "",
+        valor=v.valor,
     ) for k, v in acumulado.items()]
 
     items.sort(key=lambda x: x.valor, reverse=True)
@@ -398,7 +444,7 @@ def estadisticas_jugador_por_torneo(db: Session, torneo_id: int, usuario_id: int
         ).all()
         partidos_map = {p.id: p for p in partidos}
 
-    resultado = []
+    resultado: list[_RegistroEstadisticaJugador] = []
     for r in registros:
         partido = partidos_map.get(r.partido_id)
         equipo_oponente_id = None
@@ -411,19 +457,19 @@ def estadisticas_jugador_por_torneo(db: Session, torneo_id: int, usuario_id: int
                 equipo_oponente_id = partido.equipo_local_id
                 equipo_oponente_nombre = partido.equipo_local.nombre if partido.equipo_local else None
 
-        resultado.append({
-            "partido_id": r.partido_id,
-            "fecha": partido.fecha if partido else None,
-            "equipo_id": r.equipo_id,
-            "equipo_nombre": r.equipo.nombre if r.equipo else "",
-            "equipo_oponente_id": equipo_oponente_id,
-            "equipo_oponente_nombre": equipo_oponente_nombre,
-            "goles": r.goles,
-            "amarillas": r.amarillas,
-            "rojas": r.rojas,
-        })
+        resultado.append(_RegistroEstadisticaJugador(
+            partido_id=r.partido_id,
+            fecha=partido.fecha if partido else None,
+            equipo_id=r.equipo_id,
+            equipo_nombre=r.equipo.nombre if r.equipo else "",
+            equipo_oponente_id=equipo_oponente_id,
+            equipo_oponente_nombre=equipo_oponente_nombre,
+            goles=r.goles,
+            amarillas=r.amarillas,
+            rojas=r.rojas,
+        ))
 
-    resultado.sort(key=lambda x: (x["fecha"] or date.min))
+    resultado.sort(key=lambda x: (x.fecha or date.min))
     return resultado
 
 
@@ -434,20 +480,20 @@ def actualizar_tabla_posiciones(db: Session, partido: PartidoTorneo):
         return
 
     equipos_data = [
-        {"id": partido.equipo_local_id, "gf": partido.goles_local, "gc": partido.goles_visitante},
-        {"id": partido.equipo_visitante_id, "gf": partido.goles_visitante, "gc": partido.goles_local}
+        _DatosEquipoPartido(id=partido.equipo_local_id, gf=partido.goles_local, gc=partido.goles_visitante),
+        _DatosEquipoPartido(id=partido.equipo_visitante_id, gf=partido.goles_visitante, gc=partido.goles_local),
     ]
 
     for data in equipos_data:
         pos = db.query(TablaPosiciones).filter_by(
             torneo_id=partido.torneo_id, 
-            equipo_id=data["id"]
+            equipo_id=data.id
         ).first()
 
         if not pos:
             pos = TablaPosiciones(
                 torneo_id=partido.torneo_id, 
-                equipo_id=data["id"], 
+                equipo_id=data.id, 
                 grupo=partido.grupo,
                 pj=0,
                 pg=0,
@@ -460,13 +506,13 @@ def actualizar_tabla_posiciones(db: Session, partido: PartidoTorneo):
             db.add(pos)
 
         pos.pj += 1
-        pos.gf += data["gf"]
-        pos.gc += data["gc"]
+        pos.gf += data.gf
+        pos.gc += data.gc
 
-        if data["gf"] > data["gc"]:
+        if data.gf > data.gc:
             pos.pg += 1
             pos.pts += 3
-        elif data["gf"] == data["gc"]:
+        elif data.gf == data.gc:
             pos.pe += 1
             pos.pts += 1
         else:

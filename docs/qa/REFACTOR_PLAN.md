@@ -13,9 +13,9 @@
 
 ## FASE 2 — Separación de Responsabilidades en Partidos (Impacto ALTO, refactoring estructural)
 
-- [ ] **2.1** Extraer `reserva_admin_service.py` — Mover funciones de Dueño de Cancha (`crear_reserva_manual`, `crear_bloqueo_turno`, `eliminar_bloqueo_turno`, `cancelar_reserva_dueno`, `reprogramar_reserva` + helpers compartidos). Actualizar `routers/reservas.py`. | Nuevo: `reserva_admin_service.py`, Edit: `partido_service.py`, `routers/reservas.py`
-- [ ] **2.2** Consolidar queries en `obtener_mis_partidos` — Unificar las dos queries en una sola consulta con `or_()`. | `partido_repository.py`, `partido_service.py`
-- [ ] **2.3** Deduplicar verificación de solapamiento — Extraer la lógica de overlap compartida entre `crear_partido` y `crear_reserva_manual` a una función privada. | `partido_service.py`, `reserva_admin_service.py`
+- [x] **2.1** Extraer `reserva_admin_service.py` — Mover funciones de Dueño de Cancha (`crear_reserva_manual`, `crear_bloqueo_turno`, `eliminar_bloqueo_turno`, `cancelar_reserva_dueno`, `reprogramar_reserva` + helpers compartidos). Actualizar `routers/reservas.py`. | Nuevo: `reserva_admin_service.py`, Edit: `partido_service.py`, `routers/reservas.py`
+- [x] **2.2** Consolidar queries en `obtener_mis_partidos` — Unificar las dos queries en una sola consulta con `or_()`. | `partido_repository.py`, `partido_service.py`
+- [x] **2.3** Deduplicar verificación de solapamiento — Extraer la lógica de overlap compartida entre `crear_partido` y `crear_reserva_manual` a una función privada. | `partido_service.py`, `reserva_admin_service.py`
 
 **Checkpoint**: `pytest backend/tests/test_partidos.py` + `pytest backend/tests/test_reservas.py`
 
@@ -47,9 +47,9 @@
 
 ## FASE 5 — Patrones y Mejoras Transversales (Impacto MEDIO)
 
-- [ ] **5.1** State Machine para `EstadoTorneo` — Transiciones válidas centralizadas (abierto → en_curso → finalizado / cancelado). | `torneo_model.py`, `torneo_service.py`
+- [x] **5.1** State Machine para `EstadoTorneo` — Transiciones válidas centralizadas (abierto → en_curso → finalizado / cancelado). | `torneo_model.py`, `torneo_service.py`
 - [ ] **5.2** ~~DI para notificaciones~~ — Descartado: 10 call sites con firmas variadas, churn alto por beneficio mínimo en este tamaño de proyecto.
-- [ ] **5.3** Depends para validación de roles — Mover `_verificar_rol_admin` a un `Depends` a nivel router. | `routers/canchas.py`, `routers/reservas.py`, `core/dependencies.py`
+- [x] **5.3** Depends para validación de roles — Mover `_verificar_rol_admin` a un `Depends` a nivel router. | `routers/canchas.py`, `routers/reservas.py`, `core/dependencies.py`
 - [ ] **5.4** ~~Cancha: Validación de horarios granular~~ — Descartado: issue pre-existente (`tiene_reservas_activas_futuras` no ve `PartidoTorneo`), fuera del alcance de refactor de torneos.
 - [ ] **5.5** ~~AgendaBuilder: Paginación~~ — Descartado: máximo 15-24 slots por día, no hay problema real de performance.
 
@@ -59,13 +59,40 @@
 
 ## FASE 6 — Estandarización de Suite de Pruebas
 
-- [ ] **6.1** Definir convención de naming — Establecer el estándar `test_<funcion>_<condicion>_<resultado>` como regla global para todos los archivos de test. Documentar con ejemplos en `docs/qa/TESTING_CONVENTIONS.md`.
-- [ ] **6.2** Renombrar `test_auth.py` — Eliminar prefijos US (US1, US2, US3) y Tareas (Tarea 1.2, 1.3, 1.4). Renombrar cada test siguiendo la convención. Ej: `test_us1_registro_exitoso_sin_foto` → `test_registrar_usuario_exitoso_sin_foto`.
-- [ ] **6.3** Renombrar `test_partidos.py` — Eliminar prefijos US (US7-US13). Ej: `test_us9_crear_partido_cerrado_exitoso` → `test_crear_partido_cerrado_exitoso`.
-- [ ] **6.4** Renombrar `test_canchas.py` — Eliminar prefijos US (US4-US6). Ej: `test_us4_crear_cancha_exitoso` → `test_crear_cancha_exitoso`.
-- [ ] **6.5** Renombrar `test_reservas.py` — Eliminar prefijos US (US24-US27). Ej: `test_us24_crear_reserva_exitosa` → `test_crear_reserva_manual_exitosa`.
-- [ ] **6.6** Renombrar `test_torneos.py` — Eliminar prefijos US (US14-US21). Ej: `test_us14_crear_ed_exitoso` → `test_crear_torneo_elimacion_directa_exitoso`.
-- [ ] **6.7** Unificar tests de bugs pre-existentes — Los tests con prefijo `test_bug_*` renombrarlos a `test_<modulo>_<funcion>_<bug_descripción>`. Ej: `test_bug_inscripcion_torneo_caducado` → `test_inscribir_equipo_falla_torneo_caducado`.
-- [ ] **6.8** Validación final — Ejecutar `pytest backend/tests/ -v` y verificar que todos los tests pasan con los nuevos nombres. No se permite cambiar la lógica de ningún test, solo el nombre de la función.
+- [x] **6.1** Definir convención de naming — Establecer el estándar `test_<funcion>_<condicion>_<resultado>` como regla global para todos los archivos de test. Documentar con ejemplos en `docs/qa/TESTING_CONVENTIONS.md`.
+- [x] **6.2** Renombrar `test_auth.py` — Eliminar prefijos US (US1, US2, US3) y Tareas (Tarea 1.2, 1.3, 1.4). Renombrar cada test siguiendo la convención. Ej: `test_us1_registro_exitoso_sin_foto` → `test_registrar_usuario_exitoso_sin_foto`.
+- [x] **6.3** Renombrar `test_partidos.py` — Eliminar prefijos US (US7-US13). Ej: `test_us9_crear_partido_cerrado_exitoso` → `test_crear_partido_cerrado_exitoso`.
+- [x] **6.4** Renombrar `test_canchas.py` — Eliminar prefijos US (US4-US6). Ej: `test_us4_crear_cancha_exitoso` → `test_crear_cancha_exitoso`.
+- [x] **6.5** Renombrar `test_reservas.py` — Eliminar prefijos US (US24-US27). Ej: `test_us24_crear_reserva_exitosa` → `test_crear_reserva_manual_exitosa`.
+- [x] **6.6** Renombrar `test_torneos.py` — Eliminar prefijos US (US14-US21). Ej: `test_us14_crear_ed_exitoso` → `test_crear_torneo_elimacion_directa_exitoso`.
+- [x] **6.7** Unificar tests de bugs pre-existentes — Los tests con prefijo `test_bug_*` renombrarlos a `test_<modulo>_<funcion>_<bug_descripción>`. Ej: `test_bug_inscripcion_torneo_caducado` → `test_inscribir_equipo_falla_torneo_caducado`.
+- [x] **6.8** Validación final — Ejecutar `pytest backend/tests/ -v` y verificar que todos los tests pasan con los nuevos nombres. No se permite cambiar la lógica de ningún test, solo el nombre de la función.
 
 **Checkpoint**: Suite completa `pytest` + revisión de naming consistente
+
+---
+
+## FASE 7 — DTO Refactor en `partido_torneo_service.py`
+
+- [x] **7.1** Eliminar `defaultdict` — Reemplazar `from collections import defaultdict` por `from dataclasses import dataclass, field`. Crear 5 dataclasses privadas (`_AcumuladoJugador`, `_AcumuladoEquipo`, `_AcumuladoStatJugador`, `_RegistroEstadisticaJugador`, `_DatosEquipoPartido`) para reemplazar los dicts sin tipo.
+- [x] **7.2** Refactorizar `obtener_estadisticas_torneo` — Usar `_AcumuladoJugador` y `_AcumuladoEquipo` explícitos en vez de `defaultdict`.
+- [x] **7.3** Refactorizar `_top_jugadores_por_stat` — Usar `_AcumuladoStatJugador` en vez de `acumulado = {}` con `setdefault`.
+- [x] **7.4** Refactorizar `estadisticas_jugador_por_torneo` — Usar `_RegistroEstadisticaJugador` en vez de `resultado.append({...})` con dicts.
+- [x] **7.5** Refactorizar `actualizar_tabla_posiciones` — Usar `_DatosEquipoPartido` en vez de `equipos_data = [{"id": ...}]`.
+
+**Checkpoint**: Suite completa `pytest` — 174 tests, 0 fallos
+
+---
+
+## Estado Final
+
+Todas las fases del plan de refactorización han sido completadas. El suite de tests (174 tests) pasa al 100% sin modificaciones a la lógica de negocio. Los cambios se resumen en:
+
+- **Seguridad**: JWT con rol/id, rate limiting, email async, transacción limpia
+- **Separación de responsabilidades**: `reserva_admin_service.py`, consolidación de queries, deduplicación de overlap
+- **Performance**: Eliminación de N+1 en 4 funciones, índices en agenda
+- **Calidad de código**: Filtrado SQL, repositorio, validaciones unitarias, fixture strategy, módulo de resultados
+- **State Machine**: Transiciones centralizadas en `torneo_model.py`
+- **Depends**: `require_admin`/`require_jugador` en `core/dependencies.py`
+- **Tests**: Estandarización de naming, 174 tests sin cambios en lógica
+- **DTOs**: Eliminación de dicts sin tipo en `partido_torneo_service.py` con dataclasses privadas
