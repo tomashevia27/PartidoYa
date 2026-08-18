@@ -1,4 +1,4 @@
-.PHONY: up down down-v logs logs-back logs-front seed seed-torneos seed-stats seed-masivo clean-garbage
+.PHONY: up down down-v logs logs-back logs-front seed seed-torneos seed-stats seed-masivo clean-garbage test test-verbose test-auth test-canchas test-partidos test-reservas test-torneos
 
 # ==========================================
 # 🐳 ORQUESTACIÓN DOCKER
@@ -56,3 +56,31 @@ clean-garbage:
 	rm -f patch_main.py test_validation.py test_validation2.py 'tandardize round-robin generation"q' test_output.txt backend/test_db.py frontend/scratch_fixture.py frontend/tsc_errors.log
 	mkdir -p backend/scripts
 	mv backend/cargar_datos.py backend/cargar_torneo.py backend/crear_torneo_test.py backend/seed_estadisticas_miguel.py backend/anotar_equipos.py backend/scripts/ || true
+
+# ==========================================
+# 🧪 TESTS
+# ==========================================
+
+# Correr toda la suite de tests
+test:
+	PYTHONPATH=backend python3 -m pytest backend/tests/ -v
+
+# Correr tests con output verbose (más detalle)
+test-verbose:
+	PYTHONPATH=backend python3 -m pytest backend/tests/ -v --tb=short
+
+# Tests por módulo
+test-auth:
+	PYTHONPATH=backend python3 -m pytest backend/tests/test_auth.py -v
+
+test-canchas:
+	PYTHONPATH=backend python3 -m pytest backend/tests/test_canchas.py -v
+
+test-partidos:
+	PYTHONPATH=backend python3 -m pytest backend/tests/test_partidos.py -v
+
+test-reservas:
+	PYTHONPATH=backend python3 -m pytest backend/tests/test_reservas.py -v
+
+test-torneos:
+	PYTHONPATH=backend python3 -m pytest backend/tests/test_torneos.py -v
