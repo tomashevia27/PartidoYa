@@ -21,10 +21,10 @@ def cancha_creada(client, organizador_activo):
     return res.json()["cancha"]
 
 # ==========================================
-# US 9: Crear Partido
+# Crear Partido
 # ==========================================
 
-def test_us9_crear_partido_falla_campos_obligatorios(client, organizador_activo, cancha_creada):
+def test_crear_partido_falla_campos_obligatorios(client, organizador_activo, cancha_creada):
     """Rechazar faltan campos obligatorios: Status 422"""
     datos = {
         "cancha_id": cancha_creada["id"],
@@ -34,7 +34,7 @@ def test_us9_crear_partido_falla_campos_obligatorios(client, organizador_activo,
     response = client.post("/partidos", json=datos, headers=organizador_activo["headers"])
     assert response.status_code == 422
 
-def test_us9_crear_partido_falla_pasado(client, organizador_activo, cancha_creada):
+def test_crear_partido_falla_pasado(client, organizador_activo, cancha_creada):
     """Rechazar partido en el pasado: Status 400"""
     datos = {
         "cancha_id": cancha_creada["id"],
@@ -47,7 +47,7 @@ def test_us9_crear_partido_falla_pasado(client, organizador_activo, cancha_cread
     response = client.post("/partidos", json=datos, headers=organizador_activo["headers"])
     assert response.status_code == 400
 
-def test_us9_crear_partido_falla_jugadores_fuera_rango(client, organizador_activo, cancha_creada):
+def test_crear_partido_falla_jugadores_fuera_rango(client, organizador_activo, cancha_creada):
     """Rechazar jugadores fuera de rango (ej. 10 cupos en cancha de 10 donde 1 es el organizador): Status 400"""
     futuro = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
     datos = {
@@ -61,7 +61,7 @@ def test_us9_crear_partido_falla_jugadores_fuera_rango(client, organizador_activ
     response = client.post("/partidos", json=datos, headers=organizador_activo["headers"])
     assert response.status_code in (400, 422)
 
-def test_us9_crear_partido_falla_tipo_invalido(client, organizador_activo, cancha_creada):
+def test_crear_partido_falla_tipo_invalido(client, organizador_activo, cancha_creada):
     """Rechazar tipo de partido inválido: Status 422/400"""
     futuro = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
     datos = {
@@ -75,7 +75,7 @@ def test_us9_crear_partido_falla_tipo_invalido(client, organizador_activo, canch
     response = client.post("/partidos", json=datos, headers=organizador_activo["headers"])
     assert response.status_code in (400, 422)
 
-def test_us9_crear_partido_cerrado_exitoso(client, organizador_activo, cancha_creada):
+def test_crear_partido_cerrado_exitoso(client, organizador_activo, cancha_creada):
     """Crear partido CERRADO exitoso: Status 200"""
     futuro = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
     datos = {
@@ -89,7 +89,7 @@ def test_us9_crear_partido_cerrado_exitoso(client, organizador_activo, cancha_cr
     assert response.status_code == 200
     assert response.json()["tipo"] == "cerrado"
 
-def test_us9_crear_partido_abierto_exitoso(client, organizador_activo, cancha_creada):
+def test_crear_partido_abierto_exitoso(client, organizador_activo, cancha_creada):
     """Crear partido ABIERTO exitoso: Status 200"""
     futuro = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
     datos = {
@@ -105,7 +105,7 @@ def test_us9_crear_partido_abierto_exitoso(client, organizador_activo, cancha_cr
     assert response.json()["tipo"] == "abierto"
 
 # ==========================================
-# US 7: Listado de Partidos Disponibles
+# Listado de Partidos Disponibles
 # ==========================================
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def partidos_abierto_cerrado(client, organizador_activo, cancha_creada):
     
     return {"cerrado": res_cerrado.json(), "abierto": res_abierto.json()}
 
-def test_us7_obtener_disponibles_solo_abiertos_y_filtro_zona(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_obtener_disponibles_solo_abiertos_y_filtro_zona(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Obtener listado: Status 200. El cerrado NO aparece. Filtro por zona."""
     headers = usuario_comun_activo["headers"]
     
@@ -143,7 +143,7 @@ def test_us7_obtener_disponibles_solo_abiertos_y_filtro_zona(client, usuario_com
     partidos_zona = res_zona.json()
     assert any(p["id"] == partidos_abierto_cerrado["abierto"]["id"] for p in partidos_zona)
 
-def test_us7_obtener_detalle_partido(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_obtener_detalle_partido(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Obtener detalle de un partido (Ver detalle): Status 200"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.get(f"/partidos/{p_id}", headers=usuario_comun_activo["headers"])
@@ -152,10 +152,10 @@ def test_us7_obtener_detalle_partido(client, usuario_comun_activo, partidos_abie
     assert res.json()["descripcion"] == "Abierto"
 
 # ==========================================
-# US 8: Mis Partidos
+# Mis Partidos
 # ==========================================
 
-def test_us8_obtener_mis_partidos(client, organizador_activo, partidos_abierto_cerrado):
+def test_obtener_mis_partidos(client, organizador_activo, partidos_abierto_cerrado):
     """Obtener Mis Partidos con 'organizados' e 'inscritos': Status 200"""
     res = client.get("/partidos/mis-partidos", headers=organizador_activo["headers"])
     assert res.status_code == 200
@@ -167,28 +167,28 @@ def test_us8_obtener_mis_partidos(client, organizador_activo, partidos_abierto_c
     assert any(p["id"] == partidos_abierto_cerrado["abierto"]["id"] for p in data["organizados"])
 
 # ==========================================
-# US 10: Unirse a Partido
+# Unirse a Partido
 # ==========================================
 
-def test_us10_unirse_falla_organizador(client, organizador_activo, partidos_abierto_cerrado):
+def test_unirse_falla_organizador(client, organizador_activo, partidos_abierto_cerrado):
     """Rechazar si usuario es organizador: Status 400/403"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.post(f"/partidos/{p_id}/inscribirse", headers=organizador_activo["headers"])
     assert res.status_code in (400, 403)
 
-def test_us10_unirse_falla_partido_cerrado(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_unirse_falla_partido_cerrado(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Rechazar unirse a partido cerrado: Status 400"""
     p_id = partidos_abierto_cerrado["cerrado"]["id"]
     res = client.post(f"/partidos/{p_id}/inscribirse", headers=usuario_comun_activo["headers"])
     assert res.status_code == 400
 
-def test_us10_unirse_partido_abierto_exitoso(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_unirse_partido_abierto_exitoso(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Unirse a partido abierto exitoso: Status 200"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.post(f"/partidos/{p_id}/inscribirse", headers=usuario_comun_activo["headers"])
     assert res.status_code == 200
 
-def test_us10_unirse_falla_ya_inscripto(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_unirse_falla_ya_inscripto(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Rechazar si ya está inscripto: Status 400"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     client.post(f"/partidos/{p_id}/inscribirse", headers=usuario_comun_activo["headers"])
@@ -196,7 +196,7 @@ def test_us10_unirse_falla_ya_inscripto(client, usuario_comun_activo, partidos_a
     res = client.post(f"/partidos/{p_id}/inscribirse", headers=usuario_comun_activo["headers"])
     assert res.status_code == 400
 
-def test_us10_unirse_falla_partido_pasado(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
+def test_unirse_falla_partido_pasado(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
     """Rechazar unirse a partido pasado: Status 400"""
     from sqlalchemy import text
     
@@ -215,7 +215,7 @@ def test_us10_unirse_falla_partido_pasado(client, organizador_activo, usuario_co
     assert res.status_code == 400
     assert "pasó" in res.json()["detail"].lower()
 
-def test_us10_unirse_falla_lleno(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
+def test_unirse_falla_lleno(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
     """Rechazar unirse a partido lleno: Status 400"""
     # Creamos partido con solo 1 cupo
     futuro = (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d")
@@ -245,16 +245,16 @@ def test_us10_unirse_falla_lleno(client, organizador_activo, usuario_comun_activ
     assert "lleno" in res_extra.json()["detail"].lower() or "cupos" in res_extra.json()["detail"].lower()
 
 # ==========================================
-# US 11: Bajarse de Partido
+# Bajarse de Partido
 # ==========================================
 
-def test_us11_bajarse_falla_no_inscripto(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_bajarse_falla_no_inscripto(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Rechazar bajarse sin estar inscripto: Status 400"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.delete(f"/partidos/{p_id}/bajarse", headers=usuario_comun_activo["headers"])
     assert res.status_code == 400
 
-def test_us11_bajarse_exitoso(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_bajarse_exitoso(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Bajarse de partido exitoso: Status 200"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     client.post(f"/partidos/{p_id}/inscribirse", headers=usuario_comun_activo["headers"])
@@ -262,7 +262,7 @@ def test_us11_bajarse_exitoso(client, usuario_comun_activo, partidos_abierto_cer
     res = client.delete(f"/partidos/{p_id}/bajarse", headers=usuario_comun_activo["headers"])
     assert res.status_code == 200
 
-def test_us11_bajarse_falla_fuera_de_tiempo(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
+def test_bajarse_falla_fuera_de_tiempo(client, organizador_activo, usuario_comun_activo, cancha_creada, db_session):
     """Rechazar darse de baja si ya pasó el partido o está a punto de jugarse"""
     from sqlalchemy import text
     
@@ -285,23 +285,23 @@ def test_us11_bajarse_falla_fuera_de_tiempo(client, organizador_activo, usuario_
     assert "pasó" in res.json()["detail"].lower() or "curso" in res.json()["detail"].lower()
 
 # ==========================================
-# US 13: Editar Partido
+# Editar Partido
 # ==========================================
 
-def test_us13_editar_falla_no_organizador(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_editar_falla_no_organizador(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Rechazar editar si no es organizador: Status 403"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.put(f"/partidos/{p_id}", json={"descripcion": "hacked"}, headers=usuario_comun_activo["headers"])
     assert res.status_code == 403
 
-def test_us13_editar_falla_horario_ocupado(client, organizador_activo, partidos_abierto_cerrado):
+def test_editar_falla_horario_ocupado(client, organizador_activo, partidos_abierto_cerrado):
     """Rechazar editar a horario ocupado: Status 400"""
     # El cerrado está a las 15:00. Editaremos el abierto (16:00) para que sea a las 15:00
     p_id_abierto = partidos_abierto_cerrado["abierto"]["id"]
     res = client.put(f"/partidos/{p_id_abierto}", json={"horario": "15:00"}, headers=organizador_activo["headers"])
     assert res.status_code == 400
 
-def test_us13_editar_exitoso(client, organizador_activo, partidos_abierto_cerrado):
+def test_editar_partido_exitoso(client, organizador_activo, partidos_abierto_cerrado):
     """Editar partido exitoso: Status 200"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.put(f"/partidos/{p_id}", json={"horario": "17:00", "descripcion": "Editado"}, headers=organizador_activo["headers"])
@@ -309,23 +309,23 @@ def test_us13_editar_exitoso(client, organizador_activo, partidos_abierto_cerrad
     assert res.json()["descripcion"] == "Editado"
 
 # ==========================================
-# US 12: Cancelar Partido
+# Cancelar Partido
 # ==========================================
 
-def test_us12_cancelar_falla_no_organizador(client, usuario_comun_activo, partidos_abierto_cerrado):
+def test_cancelar_falla_no_organizador(client, usuario_comun_activo, partidos_abierto_cerrado):
     """Rechazar cancelar si no es organizador: Status 403"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.patch(f"/partidos/{p_id}/cancelar", headers=usuario_comun_activo["headers"])
     assert res.status_code == 403
 
-def test_us12_cancelar_exitoso(client, organizador_activo, partidos_abierto_cerrado):
+def test_cancelar_partido_exitoso(client, organizador_activo, partidos_abierto_cerrado):
     """Cancelar partido exitoso: Status 200"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     res = client.patch(f"/partidos/{p_id}/cancelar", headers=organizador_activo["headers"])
     assert res.status_code == 200
     assert res.json()["estado"].lower() == "cancelado"
 
-def test_us12_cancelar_falla_ya_cancelado(client, organizador_activo, partidos_abierto_cerrado):
+def test_cancelar_falla_ya_cancelado(client, organizador_activo, partidos_abierto_cerrado):
     """Rechazar si ya está cancelado: Status 400"""
     p_id = partidos_abierto_cerrado["abierto"]["id"]
     client.patch(f"/partidos/{p_id}/cancelar", headers=organizador_activo["headers"])

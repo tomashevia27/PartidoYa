@@ -3,10 +3,10 @@ from app.models.usuario_model import Usuario
 from app.services import auth_service
 
 # ==========================================
-# US 1: Registro de Usuario
+# Registro de Usuario
 # ==========================================
 
-def test_us1_registro_falla_campos_obligatorios(client, usuario_comun_payload):
+def test_registrar_usuario_falla_campos_obligatorios(client, usuario_comun_payload):
     """Rechazar falta de campos obligatorios: Status 422"""
     datos = usuario_comun_payload.copy()
     del datos["nombre"]
@@ -18,7 +18,7 @@ def test_us1_registro_falla_campos_obligatorios(client, usuario_comun_payload):
     assert any(err["loc"] == ["body", "nombre"] for err in errores)
     assert any(err["loc"] == ["body", "zona"] for err in errores)
 
-def test_us1_registro_falla_email_invalido(client, usuario_comun_payload):
+def test_registrar_usuario_falla_email_invalido(client, usuario_comun_payload):
     """Rechazar email inválido: Status 422"""
     datos = usuario_comun_payload.copy()
     datos["email"] = "email_sin_arroba_ni_dominio"
@@ -28,7 +28,7 @@ def test_us1_registro_falla_email_invalido(client, usuario_comun_payload):
     errores = response.json().get("detail", [])
     assert any(err["loc"] == ["body", "email"] for err in errores)
 
-def test_us1_registro_falla_password_corta(client, usuario_comun_payload):
+def test_registrar_usuario_falla_password_corta(client, usuario_comun_payload):
     """Rechazar contraseña corta (<8): Status 422"""
     datos = usuario_comun_payload.copy()
     datos["password"] = "1234567"
@@ -38,13 +38,13 @@ def test_us1_registro_falla_password_corta(client, usuario_comun_payload):
     errores = response.json().get("detail", [])
     assert any(err["loc"] == ["body", "password"] for err in errores)
 
-def test_us1_registro_exitoso_sin_foto(client, usuario_comun_payload):
+def test_registrar_usuario_exitoso_sin_foto(client, usuario_comun_payload):
     """Registro exitoso (sin foto): Status 200"""
     response = client.post("/registro", json=usuario_comun_payload)
     assert response.status_code == 200
     assert "mensaje" in response.json()
 
-def test_us1_registro_falla_email_duplicado(client, usuario_comun_payload):
+def test_registrar_usuario_falla_email_duplicado(client, usuario_comun_payload):
     """Rechazar email duplicado: Status 400"""
     # Primer registro
     client.post("/registro", json=usuario_comun_payload)
@@ -55,15 +55,15 @@ def test_us1_registro_falla_email_duplicado(client, usuario_comun_payload):
     assert response.json()["detail"] == "El email ya está registrado"
 
 # ==========================================
-# US 2: Inicio de Sesión
+# Inicio de Sesión
 # ==========================================
 
-def test_us2_login_falla_faltan_credenciales(client):
+def test_login_falla_faltan_credenciales(client):
     """Faltan credenciales: Status 422"""
     response = client.post("/login", json={"email": "test@dominio.com"}) # Falta password
     assert response.status_code == 422
 
-def test_us2_login_falla_credenciales_incorrectas(client, usuario_comun_activo):
+def test_login_falla_credenciales_incorrectas(client, usuario_comun_activo):
     """Credenciales incorrectas: Status 401"""
     datos_login = {
         "email": usuario_comun_activo["payload"]["email"],
@@ -73,7 +73,7 @@ def test_us2_login_falla_credenciales_incorrectas(client, usuario_comun_activo):
     assert response.status_code == 401
     assert response.json()["detail"] == "Email o contraseña incorrectos"
 
-def test_us2_login_falla_usuario_no_existe(client):
+def test_login_falla_usuario_no_existe(client):
     """Usuario no existe (Error genérico): Status 401"""
     datos_login = {
         "email": "no_existo@dominio.com",
@@ -83,7 +83,7 @@ def test_us2_login_falla_usuario_no_existe(client):
     assert response.status_code == 401
     assert response.json()["detail"] == "Email o contraseña incorrectos"
 
-def test_us2_login_falla_bloqueo_cuenta_no_confirmada(client, db_session, usuario_comun_payload):
+def test_login_falla_cuenta_no_confirmada(client, db_session, usuario_comun_payload):
     """Bloqueo por cuenta no confirmada: Status 403"""
     # Registrar usuario pero NO confirmarlo
     client.post("/registro", json=usuario_comun_payload)
@@ -96,7 +96,7 @@ def test_us2_login_falla_bloqueo_cuenta_no_confirmada(client, db_session, usuari
     assert response.status_code == 403
     assert response.json()["detail"] == "La cuenta no está activa aún"
 
-def test_us2_login_exitoso(client, usuario_comun_activo):
+def test_login_exitoso(client, usuario_comun_activo):
     """Login exitoso: Status 200"""
     datos_login = {
         "email": usuario_comun_activo["payload"]["email"],
@@ -108,10 +108,10 @@ def test_us2_login_exitoso(client, usuario_comun_activo):
     assert "usuario_id" in response.json()
 
 # ==========================================
-# US 3: Edición de Perfil
+# Edición de Perfil
 # ==========================================
 
-def test_us3_edicion_falla_campos_obligatorios_vacios(client, usuario_comun_activo):
+def test_editar_perfil_falla_campos_obligatorios_vacios(client, usuario_comun_activo):
     """Rechazar campos obligatorios vacíos: Status 422"""
     headers = usuario_comun_activo["headers"]
     
@@ -121,7 +121,7 @@ def test_us3_edicion_falla_campos_obligatorios_vacios(client, usuario_comun_acti
     response = client.put("/usuarios/me", json=datos_edicion, headers=headers)
     assert response.status_code == 422
 
-def test_us3_edicion_ignora_modificacion_email(client, db_session, usuario_comun_activo):
+def test_editar_perfil_ignora_modificacion_email(client, db_session, usuario_comun_activo):
     """El email no puede ser modificado: Email devuelto = original"""
     headers = usuario_comun_activo["headers"]
     email_original = usuario_comun_activo["payload"]["email"]
@@ -141,7 +141,7 @@ def test_us3_edicion_ignora_modificacion_email(client, db_session, usuario_comun
     # Verificar que el email devuelto es el original y no se modificó
     assert response.json().get("email") == email_original
 
-def test_us3_edicion_general_exitosa(client, db_session, usuario_comun_activo):
+def test_editar_perfil_exitoso(client, db_session, usuario_comun_activo):
     """Edición general exitosa: Status 200"""
     headers = usuario_comun_activo["headers"]
     
@@ -157,10 +157,10 @@ def test_us3_edicion_general_exitosa(client, db_session, usuario_comun_activo):
     assert response.status_code == 200
 
 # ==========================================
-# Tarea 1.2: Email asíncrono - robustez
+# Email asíncrono - robustez
 # ==========================================
 
-def test_registro_crea_usuario_si_email_falla(client, db_session, usuario_comun_payload):
+def test_registrar_usuario_crea_usuario_si_email_falla(client, db_session, usuario_comun_payload):
     """El usuario se crea aunque el servicio de email falle (email async)."""
     from fastapi.testclient import TestClient
     from app.main import app as _app
@@ -176,10 +176,10 @@ def test_registro_crea_usuario_si_email_falla(client, db_session, usuario_comun_
     assert usuario.email_confirmado is False
 
 # ==========================================
-# Tarea 1.3: Rate limiting en reenvío
+# Rate limiting en reenvío
 # ==========================================
 
-def test_reenvio_codigo_falla_rate_limit(client, db_session, usuario_comun_payload):
+def test_reenviar_codigo_falla_rate_limit(client, db_session, usuario_comun_payload):
     """Segundo reenvío inmediato debe retornar 429 (rate limiting)."""
     auth_service._last_resend.clear()
 
@@ -196,10 +196,10 @@ def test_reenvio_codigo_falla_rate_limit(client, db_session, usuario_comun_paylo
     auth_service._last_resend.clear()
 
 # ==========================================
-# Tarea 1.4: JWT seguro con rol
+# JWT seguro con rol
 # ==========================================
 
-def test_login_jwt_contiene_rol(client, usuario_comun_activo):
+def test_login_exitoso_contiene_rol_jwt(client, usuario_comun_activo):
     """El JWT debe contener el rol del usuario en su payload."""
     import jwt as pyjwt
     from app.core.config import settings

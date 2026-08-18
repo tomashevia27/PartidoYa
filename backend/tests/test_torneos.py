@@ -53,44 +53,44 @@ def inscribir_equipo(client, db_session, t_id, index):
     assert res.status_code == 201
 
 # ==========================================
-# US 14: ABM de Torneos
+# ABM de Torneos
 # ==========================================
 
-def test_us14_crear_falla_fecha_pasada(client, organizador_activo, torneo_payload):
+def test_crear_torneo_falla_fecha_pasada(client, organizador_activo, torneo_payload):
     torneo_payload["fecha_inicio"] = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
     res = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     assert res.status_code == 422
 
-def test_us14_crear_falla_formato_inconsistente(client, organizador_activo, torneo_payload):
+def test_crear_torneo_falla_formato_inconsistente(client, organizador_activo, torneo_payload):
     torneo_payload["formato"] = "eliminacion_directa"
     torneo_payload["max_equipos"] = 6  # Inválido para ED, debe ser potencia de 2 (4, 8, 16)
     res = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     assert res.status_code == 422
 
-def test_us14_crear_ed_exitoso(client, organizador_activo, torneo_payload):
+def test_crear_torneo_ed_exitoso(client, organizador_activo, torneo_payload):
     torneo_payload["formato"] = "eliminacion_directa"
     torneo_payload["max_equipos"] = 8
     res = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     assert res.status_code == 201
 
-def test_us14_crear_fg_exitoso(client, organizador_activo, torneo_payload):
+def test_crear_torneo_fg_exitoso(client, organizador_activo, torneo_payload):
     torneo_payload["formato"] = "fase_grupos"
     torneo_payload["max_equipos"] = 8
     torneo_payload["fase_final"] = "semis"
     res = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     assert res.status_code == 201
 
-def test_us14_crear_tct_exitoso(client, organizador_activo, torneo_payload):
+def test_crear_torneo_tct_exitoso(client, organizador_activo, torneo_payload):
     torneo_payload["formato"] = "todos_contra_todos"
     torneo_payload["max_equipos"] = 6
     res = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     assert res.status_code == 201
 
 # ==========================================
-# US 15 y Bugs (Bloque 3): Inscripciones
+# Inscripciones
 # ==========================================
 
-def test_us15_inscripcion_falla_faltan_jugadores(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
+def test_inscribir_equipo_falla_faltan_jugadores(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
     res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     t_id = res_t.json()["id"]
     
@@ -100,7 +100,7 @@ def test_us15_inscripcion_falla_faltan_jugadores(client, usuario_comun_activo, o
     }, headers=usuario_comun_activo["headers"])
     assert res.status_code == 400
 
-def test_us15_inscripcion_exitosa_y_baja(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
+def test_inscribir_equipo_exitosa_y_baja(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
     res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     t_id = res_t.json()["id"]
     
@@ -115,7 +115,7 @@ def test_us15_inscripcion_exitosa_y_baja(client, usuario_comun_activo, organizad
     res_baja = client.delete(f"/api/torneos/{t_id}/inscripciones", headers=usuario_comun_activo["headers"])
     assert res_baja.status_code == 200
 
-def test_bug_inscripcion_torneo_caducado(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
+def test_inscribir_equipo_falla_torneo_caducado(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
     res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     t_id = res_t.json()["id"]
     
@@ -130,10 +130,10 @@ def test_bug_inscripcion_torneo_caducado(client, usuario_comun_activo, organizad
     assert res.status_code == 400
 
 # ==========================================
-# US 16 y Torneos Fantasmas: Ver Torneos
+# Listar Torneos
 # ==========================================
 
-def test_us16_listar_y_fantasmas(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
+def test_listar_torneos_oculta_cancelados_y_en_curso(client, usuario_comun_activo, organizador_activo, torneo_payload, db_session):
     # Torneo Normal Abierto
     res_t1 = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
     t1_id = res_t1.json()["id"]
@@ -167,10 +167,10 @@ def test_us16_listar_y_fantasmas(client, usuario_comun_activo, organizador_activ
     assert t3_id not in ids  # En curso NO aparece en disponibles
 
 # ==========================================
-# US 18-21 y Bug Bloque 4: Fixture y Resultados
+# Fixture y Resultados
 # ==========================================
 
-def test_us18_generar_fixture_tct(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+def test_generar_fixture_tct(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
     torneo_payload["formato"] = "todos_contra_todos"
     torneo_payload["max_equipos"] = 4
     res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
@@ -184,7 +184,7 @@ def test_us18_generar_fixture_tct(client, organizador_activo, usuario_comun_acti
     assert res_fix.status_code == 200
     assert len(res_fix.json()) > 0
 
-def test_bug_resultado_sin_programar_none_type(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+def test_cargar_resultado_falla_partido_no_programado(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
     """
     Simula el Bug Crítico 4: Intentar cargar un resultado a un partido (ej. Semifinal) 
     que no ha sido programado (tiene fecha=None).
@@ -220,7 +220,7 @@ def test_bug_resultado_sin_programar_none_type(client, organizador_activo, usuar
             f.write(traceback.format_exc())
         raise e
 
-def test_us19_21_programar_y_cargar_resultado(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
+def test_programar_y_cargar_resultado(client, organizador_activo, usuario_comun_activo, torneo_payload, db_session):
     torneo_payload["formato"] = "todos_contra_todos"
     torneo_payload["max_equipos"] = 4
     res_t = client.post("/api/torneos/", json=torneo_payload, headers=organizador_activo["headers"])
@@ -243,12 +243,12 @@ def test_us19_21_programar_y_cargar_resultado(client, organizador_activo, usuari
         }, headers=organizador_activo["headers"])
         cancha_id = res_cancha.json()["cancha"]["id"]
 
-        # Programar partido
-        hoy = datetime.now().strftime("%Y-%m-%d")
+        # Programar partido para mañana a las 15:00 (siempre futuro y dentro de la franja 10:00-20:00)
+        manana = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
         res_prog = client.put(f"/api/torneos/partidos/{p_id}", json={
-            "fecha": hoy, "horario": "15:00", "cancha_id": cancha_id
+            "fecha": manana, "horario": "15:00", "cancha_id": cancha_id
         }, headers=organizador_activo["headers"])
-        assert res_prog.status_code == 200
+        assert res_prog.status_code == 200, res_prog.json()
 
         # Hackear la BD para pasarlo al pasado así podemos cargar el resultado (No se puede en futuros)
         db_session.execute(text(f"UPDATE partidos_torneo SET fecha = '2020-01-01' WHERE id = {p_id}"))
@@ -267,7 +267,7 @@ def test_us19_21_programar_y_cargar_resultado(client, organizador_activo, usuari
         assert len(res_pos.json()) > 0
     except Exception as e:
         import traceback
-        with open("/app/backend/traceback_us19.txt", "w") as f:
+        with open("/tmp/traceback_us19.txt", "w") as f:
             f.write(traceback.format_exc())
         raise e
 
