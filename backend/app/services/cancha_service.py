@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime, date
 
-from ..models.usuario_model import Usuario, RolUsuario
+from ..models.usuario_model import Usuario
 from ..models.cancha_model import Cancha
 from ..repositories import cancha_repository
 from ..repositories import partido_repository
@@ -26,11 +26,6 @@ def _obtener_minutos_totales(hora_str: str) -> int:
         raise HTTPException(status_code=400, detail="El formato de hora debe ser HH:MM válido")
 
 
-
-def _verificar_rol_admin(current_user: Usuario):
-    if current_user.rol != RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Acción permitida solo para dueños de canchas")
-
 def _obtener_cancha_existente(db: Session, cancha_id: int) -> Cancha:
     """Obtiene la cancha por ID o lanza error 404 si no existe."""
     cancha = cancha_repository.obtener_por_id(db, cancha_id)
@@ -44,8 +39,6 @@ def _obtener_cancha_existente(db: Session, cancha_id: int) -> Cancha:
 # ─────────────────────────────────────────────
 
 def crear_cancha(db: Session, current_user: Usuario, datos: CanchaCreate) -> dict:
-    _verificar_rol_admin(current_user)
-    
     if datos.precio_por_turno <= 0:
         raise HTTPException(status_code=400, detail="El precio por turno debe ser mayor a cero")
 
@@ -68,7 +61,6 @@ def obtener_activas(db: Session):
     return cancha_repository.obtener_activas(db)
 
 def obtener_mis_canchas(db: Session, current_user: Usuario):
-    _verificar_rol_admin(current_user)
     return cancha_repository.obtener_por_admin(db, current_user.id)
 
 def obtener_por_id(db: Session, cancha_id: int):
@@ -77,7 +69,6 @@ def obtener_por_id(db: Session, cancha_id: int):
 def editar_cancha(db: Session, current_user: Usuario, cancha_id: int, datos: CanchaUpdate):
     cancha = _obtener_cancha_existente(db, cancha_id)
 
-    _verificar_rol_admin(current_user)
     cancha.verificar_propietario(current_user.id, "Solo el propietario puede modificar o ver esta información")
 
     cambia_horarios = (
@@ -102,7 +93,6 @@ def editar_cancha(db: Session, current_user: Usuario, cancha_id: int, datos: Can
 def eliminar_cancha(db: Session, current_user: Usuario, cancha_id: int):
     cancha = _obtener_cancha_existente(db, cancha_id)
 
-    _verificar_rol_admin(current_user)
     cancha.verificar_propietario(current_user.id, "Solo el propietario puede modificar o ver esta información")
 
     if cancha_repository.tiene_reservas_activas(db, cancha_id):
@@ -115,8 +105,6 @@ def eliminar_cancha(db: Session, current_user: Usuario, cancha_id: int):
     return {"mensaje": "Cancha eliminada exitosamente"}
 
 def eliminar_canchas_por_admin(db: Session, current_user: Usuario):
-    _verificar_rol_admin(current_user)
-
     canchas = cancha_repository.obtener_por_admin(db, current_user.id)
     if not canchas:
         return {"mensaje": "El administrador no tiene canchas registradas"}
@@ -149,7 +137,6 @@ def obtener_turnos_disponibles(db: Session, cancha_id: int, fecha: date, excluir
 def obtener_agenda(db: Session, current_user: Usuario, cancha_id: int, fecha: date):
     cancha = _obtener_cancha_existente(db, cancha_id)
 
-    _verificar_rol_admin(current_user)
     cancha.verificar_propietario(current_user.id, "Solo el propietario puede modificar o ver esta información")
 
     partidos = partido_repository.obtener_partidos_por_cancha_y_fecha(db, cancha_id, fecha)

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from ..models.usuario_model import Usuario
 
-from ..models.torneo_model import Torneo, EstadoTorneo
+from ..models.torneo_model import Torneo, EstadoTorneo, transicionar_estado
 from ..schemas.torneo_schemas import TorneoCreate, TorneoUpdate
 from ..repositories import torneo_repository, usuario_repository
 from ..models.equipo_model import Equipo
@@ -242,13 +242,8 @@ def cancelar_torneo(db: Session, torneo_id: int, organizador_id: int, background
         
     if torneo.organizador_id != organizador_id:
         raise DomainPermissionError("No tienes permisos para cancelar este torneo")
-        
-    if torneo.estado == EstadoTorneo.cancelado:
-        raise DomainRuleError("El torneo ya está cancelado")
-    if torneo.estado == EstadoTorneo.en_curso:
-        raise DomainRuleError("No se puede cancelar un torneo que está en curso")
-    if torneo.estado == EstadoTorneo.finalizado:
-        raise DomainRuleError("No se puede cancelar un torneo finalizado")
+
+    transicionar_estado(torneo.estado, EstadoTorneo.cancelado)
 
     notificar_torneo_cancelado(torneo, background_tasks)
 
@@ -276,11 +271,7 @@ def generar_fixture(
             detail="Solo el organizador puede generar el fixture"
         )
 
-    if torneo.estado != EstadoTorneo.abierto:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El fixture solo puede generarse para torneos abiertos"
-        )
+    transicionar_estado(torneo.estado, EstadoTorneo.en_curso)
 
     if torneo.partidos:
         raise HTTPException(

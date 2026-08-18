@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 
-from ..core.dependencies import get_db
+from ..core.dependencies import get_db, require_jugador
 from ..models.usuario_model import Usuario
 from ..schemas.partido_schemas import PartidoCreate, PartidoUpdate, PartidoRespuesta, MisPartidosRespuesta, FiltrosDisponibles
 from ..services import partido_service
@@ -45,7 +45,7 @@ def inscribirse_a_partido(
     partido_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_jugador),
 ):
     """Inscribe al usuario logueado en el partido seleccionado."""
     return partido_service.inscribirse_a_partido(db, partido_id, current_user.id, background_tasks)

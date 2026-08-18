@@ -48,10 +48,10 @@
 ## FASE 5 — Patrones y Mejoras Transversales (Impacto MEDIO)
 
 - [ ] **5.1** State Machine para `EstadoTorneo` — Transiciones válidas centralizadas (abierto → en_curso → finalizado / cancelado). | `torneo_model.py`, `torneo_service.py`
-- [ ] **5.2** DI para notificaciones — Inyectar notificador como dependencia en vez de importarlo directamente. | `dependencies.py`, `routers/*.py`, services
+- [ ] **5.2** ~~DI para notificaciones~~ — Descartado: 10 call sites con firmas variadas, churn alto por beneficio mínimo en este tamaño de proyecto.
 - [ ] **5.3** Depends para validación de roles — Mover `_verificar_rol_admin` a un `Depends` a nivel router. | `routers/canchas.py`, `routers/reservas.py`, `core/dependencies.py`
-- [ ] **5.4** Cancha: Validación de horarios granular — Evaluar si la reserva es del día/horario afectado, no solo `tiene_reservas_activas_futuras()`. | `cancha_service.py`
-- [ ] **5.5** AgendaBuilder: Paginación — Limitar slots generados para canchas con rango 24h. | `agenda_builder.py`, `cancha_service.py`
+- [ ] **5.4** ~~Cancha: Validación de horarios granular~~ — Descartado: issue pre-existente (`tiene_reservas_activas_futuras` no ve `PartidoTorneo`), fuera del alcance de refactor de torneos.
+- [ ] **5.5** ~~AgendaBuilder: Paginación~~ — Descartado: máximo 15-24 slots por día, no hay problema real de performance.
 
 **Checkpoint**: Suite completa `pytest`
 

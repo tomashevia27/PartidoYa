@@ -15,6 +15,23 @@ class EstadoTorneo(str, enum.Enum):
     finalizado = "finalizado"
     cancelado = "cancelado"
 
+
+TRANSICIONES_VALIDAS: dict[EstadoTorneo, set[EstadoTorneo]] = {
+    EstadoTorneo.abierto: {EstadoTorneo.en_curso, EstadoTorneo.cancelado},
+    EstadoTorneo.en_curso: {EstadoTorneo.finalizado},
+    EstadoTorneo.finalizado: set(),
+    EstadoTorneo.cancelado: set(),
+}
+
+
+def transicionar_estado(estado_actual: EstadoTorneo, nuevo_estado: EstadoTorneo) -> None:
+    """Valida que la transición de estado sea permitida. Lanza ValueError si no lo es."""
+    destinos = TRANSICIONES_VALIDAS.get(estado_actual, set())
+    if nuevo_estado not in destinos:
+        raise ValueError(
+            f"No se puede transitar de '{estado_actual.value}' a '{nuevo_estado.value}'"
+        )
+
 class Torneo(Base):
     __tablename__ = "torneos"
 

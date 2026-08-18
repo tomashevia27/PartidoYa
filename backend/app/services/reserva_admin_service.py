@@ -1,7 +1,7 @@
 from fastapi import HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from ..models.usuario_model import Usuario, RolUsuario
+from ..models.usuario_model import Usuario
 from ..schemas.partido_schemas import ReservaManualCreate, ReprogramarReserva
 from ..repositories import partido_repository, cancha_repository
 from ..services import partido_notificador
@@ -13,9 +13,6 @@ from ..models.partido_model import Partido
 
 
 def crear_reserva_manual(db: Session, current_user: Usuario, datos: ReservaManualCreate):
-    if current_user.rol != RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden cargar reservas manuales")
-
     _validar_fecha_futura(datos.fecha, datos.horario, "No se puede reservar un turno que ya pasó o está en curso")
 
     cancha, modalidad, cantidad_jugadores = _validar_y_obtener_datos_cancha(
@@ -34,9 +31,6 @@ def crear_reserva_manual(db: Session, current_user: Usuario, datos: ReservaManua
     return resultado
 
 def crear_bloqueo_turno(db: Session, current_user: Usuario, datos: ReservaManualCreate):
-    if current_user.rol != RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden bloquear turnos")
-
     cancha, modalidad, cantidad_jugadores = _validar_y_obtener_datos_cancha(
         db, datos.cancha_id, datos.fecha, datos.horario
     )
@@ -66,9 +60,6 @@ def eliminar_bloqueo_turno(db: Session, current_user: Usuario, partido_id: int):
     return {"mensaje": "Bloqueo eliminado exitosamente"}
 
 def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int, background_tasks: BackgroundTasks):
-    if current_user.rol != RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden cancelar reservas")
-
     partido = partido_repository.obtener_por_id(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -88,9 +79,6 @@ def cancelar_reserva_dueno(db: Session, current_user: Usuario, partido_id: int, 
     return partido
 
 def reprogramar_reserva(db: Session, current_user: Usuario, partido_id: int, datos: ReprogramarReserva, background_tasks: BackgroundTasks):
-    if current_user.rol != RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Solo los dueños de cancha pueden reprogramar reservas")
-
     partido = partido_repository.obtener_por_id(db, partido_id)
     if not partido:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")

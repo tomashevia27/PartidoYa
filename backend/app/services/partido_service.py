@@ -6,7 +6,7 @@ from datetime import datetime, date, timedelta, timezone
 TZ_LOCAL = timezone(timedelta(hours=-3))
 
 from ..models.partido_model import Partido
-from ..models.usuario_model import Usuario, RolUsuario
+from ..models.usuario_model import Usuario
 from ..repositories import partido_repository
 from ..repositories import usuario_repository
 from ..schemas.partido_schemas import PartidoCreate, PartidoUpdate
@@ -105,8 +105,6 @@ def inscribirse_a_partido(db: Session, partido_id: int, usuario_id: int, backgro
     usuario = usuario_repository.obtener_por_id(db, usuario_id)
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    if usuario.rol == RolUsuario.admin:
-        raise HTTPException(status_code=403, detail="Los dueños de cancha no pueden inscribirse a partidos")
 
     partido.inscribir_jugador(usuario)
 

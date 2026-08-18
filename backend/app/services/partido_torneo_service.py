@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from ..models.tabla_posicion import TablaPosiciones
 from ..models.cancha_model import Cancha, DIAS_SEMANA_MAP
-from ..models.torneo_model import Torneo, FormatoTorneo, EstadoTorneo
+from ..models.torneo_model import Torneo, FormatoTorneo, EstadoTorneo, transicionar_estado
 from ..models.partido_torneo import EstadoPartidoTorneo, PartidoTorneo, FaseTorneo
 from ..models.partido_torneo import PartidoTorneo
 from ..models.estadistica_jugador_partido_torneo import EstadisticaJugadorPartidoTorneo
@@ -213,6 +213,7 @@ def cargar_resultado_partido(db: Session, partido_id: int, data: CargarResultado
 
     # Finalizar el torneo si se jugó la final
     if partido.fase == FaseTorneo.final:
+        transicionar_estado(partido.torneo.estado, EstadoTorneo.finalizado)
         partido.torneo.estado = EstadoTorneo.finalizado
 
     db.commit()
