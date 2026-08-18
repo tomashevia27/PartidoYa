@@ -1,7 +1,7 @@
 import { fetchApi, getErrorMessage, ApiError } from "@/lib/api-client";
 
-const CLOUD_NAME = "dzsrgcgq6"
-const UPLOAD_PRESET = "PartidoYa_preset"
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "dzsrgcgq6"
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_PRESET || "PartidoYa_preset"
 
 export interface RegisterPayload {
   nombre: string;
