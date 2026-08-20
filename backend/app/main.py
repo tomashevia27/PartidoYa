@@ -16,7 +16,10 @@ app = FastAPI(title="Team UP API")
 # Configuración de CORS para que el Front pueda conectarse
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, we should restrict this to our frontend domain (Vercel)
+    allow_origins=[
+        "https://partido-ya.vercel.app", 
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
